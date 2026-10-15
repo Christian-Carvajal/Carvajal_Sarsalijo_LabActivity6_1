@@ -1,0 +1,510 @@
+"""
+db_tools.py
+Database tool definitions and function bindings for Perpetual Bistro Order Agent.
+Handles SQLite operations, transactional integrity, stock deduction, and allergen queries.
+"""
+
+import os
+import sqlite3
+from typing import Dict, Any, List, Optional
+import uuid
+
+_BASE_DIR = os.path.dirname(__file__)
+_RESOURCE_DB = os.path.join(_BASE_DIR, "resources", "restaurant.db")
+_ROOT_DB = os.path.join(_BASE_DIR, "restaurant.db")
+
+if os.path.exists(_RESOURCE_DB):
+    DB_PATH = _RESOURCE_DB
+elif os.path.exists(_ROOT_DB):
+    DB_PATH = _ROOT_DB
+elif os.path.isdir(os.path.join(_BASE_DIR, "resources")):
+    DB_PATH = _RESOURCE_DB
+else:
+    DB_PATH = _ROOT_DB
+
+SQL_INIT_PATH = os.path.join(_BASE_DIR, "init_restaurant_db.sql")
+
+
+def get_db_connection(db_path: str = DB_PATH) -> sqlite3.Connection:
+    """Creates a thread-safe connection to the SQLite database with dictionary rows."""
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def init_db(db_path: str = DB_PATH, sql_path: str = SQL_INIT_PATH) -> None:
+    """Initializes the database schema using init_restaurant_db.sql."""
+    if not os.path.exists(sql_path):
+        raise FileNotFoundError(f"SQL init file not found at {sql_path}")
+    with open(sql_path, "r", encoding="utf-8") as f:
+        sql_script = f.read()
+    with get_db_connection(db_path) as conn:
+        conn.executescript(sql_script)
+        conn.commit()
+
+
+def create_or_get_session(table_no: int, session_id: Optional[str] = None, db_path: str = DB_PATH) -> Dict[str, Any]:
+    """Creates a new table session or retrieves an existing active session."""
+    with get_db_connection(db_path) as conn:
+        cursor = conn.cursor()
+        if session_id:
+            cursor.execute("SELECT * FROM table_sessions WHERE session_id = ?", (session_id,))
+            row = cursor.fetchone()
+            if row:
+                return dict(row)
+
+        new_session_id = session_id or str(uuid.uuid4())[:8]
+        cursor.execute(
+            """
+            INSERT OR REPLACE INTO table_sessions (session_id, table_no, status, updated_at)
+            VALUES (?, ?, 'STATE_GREETING', CURRENT_TIMESTAMP)
+            """,
+            (new_session_id, table_no),
+        )
+        conn.commit()
+        return {"session_id": new_session_id, "table_no": table_no, "status": "STATE_GREETING"}
+
+
+def set_session_status(session_id: str, new_status: str, db_path: str = DB_PATH) -> bool:
+    """Updates the FSM state stored in the table_sessions table."""
+    with get_db_connection(db_path) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE table_sessions SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE session_id = ?",
+            (new_status, session_id),
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+
+
+def get_all_categories(db_path: str = DB_PATH) -> List[str]:
+    """Returns a list of distinct menu categories."""
+    with get_db_connection(db_path) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT DISTINCT category FROM menu_items ORDER BY category")
+        return [row["category"] for row in cursor.fetchall()]
+
+
+def _find_menu_item(item_query: str, conn: sqlite3.Connection) -> Optional[sqlite3.Row]:
+    """Helper to locate a menu item by exact name or substring matching."""
+    cursor = conn.cursor()
+    # 1. Exact match (case insensitive)
+    cursor.execute("SELECT * FROM menu_items WHERE LOWER(name) = LOWER(?)", (item_query.strip(),))
+    row = cursor.fetchone()
+    if row:
+        return row
+
+    # 2. Substring match
+    cursor.execute("SELECT * FROM menu_items WHERE LOWER(name) LIKE LOWER(?) ORDER BY LENGTH(name) ASC LIMIT 1", (f"%{item_query.strip()}%",))
+    return cursor.fetchone()
+
+
+# =====================================================================
+# Professor-Specified Tool Functions (bound directly to local LLM)
+# =====================================================================
+
+def get_menu_by_category(category: Optional[str] = None, db_path: str = DB_PATH) -> Dict[str, Any]:
+    """
+    Retrieves menu items filtered by category.
+    If category is None, empty, or 'all', returns the full bistro menu grouped by category.
+    """
+    with get_db_connection(db_path) as conn:
+        cursor = conn.cursor()
+        if not category or category.strip().lower() in ["all", "everything", "menu"]:
+            cursor.execute("SELECT id, name, category, price, stock_qty, allergens, description FROM menu_items ORDER BY category, name")
+        else:
+            cursor.execute(
+                "SELECT id, name, category, price, stock_qty, allergens, description FROM menu_items WHERE LOWER(category) = LOWER(?) OR LOWER(category) LIKE LOWER(?) ORDER BY name",
+                (category.strip(), f"%{category.strip()}%"),
+            )
+        rows = cursor.fetchall()
+        items = [
+            {
+                "id": r["id"],
+                "name": r["name"],
+                "category": r["category"],
+                "price": r["price"],
+                "stock_qty": r["stock_qty"],
+                "in_stock": r["stock_qty"] > 0,
+                "allergens": r["allergens"],
+                "description": r["description"],
+            }
+            for r in rows
+        ]
+        return {
+            "status": "success",
+            "category_queried": category or "all",
+            "item_count": len(items),
+            "items": items,
+        }
+
+
+def check_item_allergen(item_name: str, allergen: str, db_path: str = DB_PATH) -> Dict[str, Any]:
+    """
+    Checks if a menu item contains a specific allergen (e.g., dairy, gluten, nuts, egg, pork, shellfish).
+    """
+    with get_db_connection(db_path) as conn:
+        row = _find_menu_item(item_name, conn)
+        if not row:
+            return {
+                "status": "not_found",
+                "message": f"Menu item '{item_name}' was not found in Perpetual Bistro catalog.",
+                "contains_allergen": False,
+            }
+
+        allergens_str = (row["allergens"] or "").lower()
+        query_allergen = allergen.strip().lower()
+        contains = query_allergen in allergens_str
+
+        return {
+            "status": "success",
+            "item_name": row["name"],
+            "allergen_queried": allergen,
+            "declared_allergens": row["allergens"],
+            "contains_allergen": contains,
+            "warning": (
+                f"Caution: {row['name']} CONTAINS {allergen.upper()} ({row['allergens']})."
+                if contains
+                else f"Safe: {row['name']} does NOT list {allergen} in its recorded allergen profile."
+            ),
+        }
+
+
+def check_availability(item_name: str, qty: int = 1, db_path: str = DB_PATH) -> Dict[str, Any]:
+    """
+    Verifies real-time stock availability for a given menu item and quantity.
+    """
+    with get_db_connection(db_path) as conn:
+        row = _find_menu_item(item_name, conn)
+        if not row:
+            return {
+                "status": "not_found",
+                "message": f"Menu item '{item_name}' does not exist in the bistro menu.",
+                "available": False,
+            }
+
+        stock = row["stock_qty"]
+        available = stock >= qty
+        return {
+            "status": "success",
+            "item_name": row["name"],
+            "requested_qty": qty,
+            "current_stock": stock,
+            "available": available,
+            "message": (
+                f"{row['name']} is available ({stock} in stock)."
+                if available
+                else f"Sorry, {row['name']} is OUT OF STOCK (available: {stock}, requested: {qty})."
+            ),
+        }
+
+
+def add_item_to_order(session_id: str, item_name: str, qty: int = 1, instructions: str = "", db_path: str = DB_PATH) -> Dict[str, Any]:
+    """
+    Adds a menu item to the table's active order cart with optional customizations.
+    Defensively checks stock availability before mutating order state.
+    """
+    if qty <= 0:
+        return {"status": "error", "message": "Quantity must be greater than zero."}
+
+    with get_db_connection(db_path) as conn:
+        cursor = conn.cursor()
+        item = _find_menu_item(item_name, conn)
+        if not item:
+            return {
+                "status": "not_found",
+                "message": f"Item '{item_name}' was not recognized. Please check the bistro menu.",
+            }
+
+        # Verify stock level
+        if item["stock_qty"] < qty:
+            # Out of stock or insufficient stock: recommend alternative from same category
+            cursor.execute(
+                "SELECT name, price, stock_qty FROM menu_items WHERE category = ? AND id != ? AND stock_qty > 0 LIMIT 2",
+                (item["category"], item["id"]),
+            )
+            alternatives = [dict(r) for r in cursor.fetchall()]
+            alt_names = ", ".join([a["name"] for a in alternatives]) if alternatives else "other menu categories"
+            return {
+                "status": "out_of_stock",
+                "item_name": item["name"],
+                "stock_available": item["stock_qty"],
+                "requested_qty": qty,
+                "message": f"Unable to add {item['name']}: item is currently out of stock ({item['stock_qty']} available).",
+                "recommended_alternatives": alternatives,
+                "suggestion": f"Would you like to try our {alt_names} instead?",
+            }
+
+        # Check if identical item with identical instructions already exists in this session
+        cursor.execute(
+            """
+            SELECT id, quantity FROM order_line_items
+            WHERE session_id = ? AND item_id = ? AND LOWER(special_instructions) = LOWER(?)
+            """,
+            (session_id, item["id"], instructions.strip()),
+        )
+        existing_line = cursor.fetchone()
+
+        if existing_line:
+            new_qty = existing_line["quantity"] + qty
+            if item["stock_qty"] < new_qty:
+                return {
+                    "status": "stock_limit_reached",
+                    "message": f"Cannot add {qty} more of {item['name']}. Current cart has {existing_line['quantity']} and total inventory is {item['stock_qty']}.",
+                }
+            cursor.execute(
+                "UPDATE order_line_items SET quantity = ? WHERE id = ?",
+                (new_qty, existing_line["id"]),
+            )
+        else:
+            cursor.execute(
+                """
+                INSERT INTO order_line_items (session_id, item_id, quantity, special_instructions, unit_price)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (session_id, item["id"], qty, instructions.strip(), item["price"]),
+            )
+
+        # Update session status to TAKING_ORDER if still in GREETING
+        cursor.execute(
+            "UPDATE table_sessions SET status = 'STATE_TAKING_ORDER', updated_at = CURRENT_TIMESTAMP WHERE session_id = ? AND status = 'STATE_GREETING'",
+            (session_id,),
+        )
+        conn.commit()
+
+        # Fetch updated cart total
+        current_order = view_current_order(session_id, db_path=db_path)
+        return {
+            "status": "success",
+            "message": f"Added {qty}x {item['name']}" + (f" with instructions: '{instructions}'" if instructions else "") + " to your tab.",
+            "added_item": {
+                "name": item["name"],
+                "quantity": qty,
+                "unit_price": item["price"],
+                "special_instructions": instructions.strip(),
+            },
+            "new_order_subtotal": current_order["subtotal"],
+            "new_order_total": current_order["grand_total"],
+            "total_items_in_cart": current_order["item_count"],
+        }
+
+
+def remove_item_from_order(session_id: str, item_name: str, db_path: str = DB_PATH) -> Dict[str, Any]:
+    """
+    Safely removes an item or line item from the active table order.
+    """
+    with get_db_connection(db_path) as conn:
+        cursor = conn.cursor()
+        item = _find_menu_item(item_name, conn)
+        if not item:
+            return {"status": "not_found", "message": f"'{item_name}' is not a recognized menu item."}
+
+        cursor.execute(
+            "SELECT id, quantity FROM order_line_items WHERE session_id = ? AND item_id = ?",
+            (session_id, item["id"]),
+        )
+        lines = cursor.fetchall()
+        if not lines:
+            return {
+                "status": "not_in_cart",
+                "message": f"'{item['name']}' is not currently in your order cart.",
+            }
+
+        cursor.execute(
+            "DELETE FROM order_line_items WHERE session_id = ? AND item_id = ?",
+            (session_id, item["id"]),
+        )
+        conn.commit()
+
+        updated_order = view_current_order(session_id, db_path=db_path)
+        return {
+            "status": "success",
+            "message": f"Removed all instances of {item['name']} from your order.",
+            "removed_item": item["name"],
+            "new_order_total": updated_order["grand_total"],
+            "remaining_items": updated_order["item_count"],
+        }
+
+
+def update_item_quantity(session_id: str, item_name: str, qty: int, db_path: str = DB_PATH) -> Dict[str, Any]:
+    """
+    Updates the quantity of an item in the active order. If qty <= 0, deletes the item.
+    """
+    if qty <= 0:
+        return remove_item_from_order(session_id, item_name, db_path=db_path)
+
+    with get_db_connection(db_path) as conn:
+        cursor = conn.cursor()
+        item = _find_menu_item(item_name, conn)
+        if not item:
+            return {"status": "not_found", "message": f"'{item_name}' was not recognized."}
+
+        if item["stock_qty"] < qty:
+            return {
+                "status": "insufficient_stock",
+                "message": f"Cannot set {item['name']} to {qty}: only {item['stock_qty']} are in stock.",
+            }
+
+        cursor.execute(
+            "SELECT id FROM order_line_items WHERE session_id = ? AND item_id = ? LIMIT 1",
+            (session_id, item["id"]),
+        )
+        line = cursor.fetchone()
+        if not line:
+            return {"status": "not_in_cart", "message": f"'{item['name']}' is not in your current order."}
+
+        cursor.execute(
+            "UPDATE order_line_items SET quantity = ? WHERE id = ?",
+            (qty, line["id"]),
+        )
+        conn.commit()
+
+        updated_order = view_current_order(session_id, db_path=db_path)
+        return {
+            "status": "success",
+            "message": f"Updated {item['name']} quantity to {qty}.",
+            "new_order_total": updated_order["grand_total"],
+        }
+
+
+def view_current_order(session_id: str, db_path: str = DB_PATH) -> Dict[str, Any]:
+    """
+    Calculates and returns the complete itemized tab for the table session,
+    including unit prices, special instruction badges, 12% VAT, and total.
+    """
+    with get_db_connection(db_path) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT table_no, status FROM table_sessions WHERE session_id = ?", (session_id,))
+        session_row = cursor.fetchone()
+        table_no = session_row["table_no"] if session_row else "Unknown"
+        status = session_row["status"] if session_row else "STATE_GREETING"
+
+        cursor.execute(
+            """
+            SELECT oli.id, oli.quantity, oli.special_instructions, oli.unit_price,
+                   mi.name, mi.category, mi.allergens
+            FROM order_line_items oli
+            JOIN menu_items mi ON oli.item_id = mi.id
+            WHERE oli.session_id = ?
+            ORDER BY oli.id ASC
+            """,
+            (session_id,),
+        )
+        lines = cursor.fetchall()
+
+        items = []
+        subtotal = 0.0
+        total_qty = 0
+
+        for line in lines:
+            line_total = line["quantity"] * line["unit_price"]
+            subtotal += line_total
+            total_qty += line["quantity"]
+            items.append({
+                "line_id": line["id"],
+                "name": line["name"],
+                "category": line["category"],
+                "quantity": line["quantity"],
+                "unit_price": line["unit_price"],
+                "line_total": round(line_total, 2),
+                "special_instructions": line["special_instructions"] or "",
+                "allergens": line["allergens"],
+            })
+
+        # Calculations: Subtotal, 12% Government VAT included/standard, Grand Total
+        vat_amount = round(subtotal * 0.12, 2)
+        grand_total = round(subtotal, 2)  # Standard campus dining retail includes tax in menu prices
+
+        return {
+            "status": "success",
+            "session_id": session_id,
+            "table_no": table_no,
+            "fsm_state": status,
+            "item_count": total_qty,
+            "line_items": items,
+            "subtotal": round(subtotal, 2),
+            "vat_12_pct_breakdown": vat_amount,
+            "grand_total": grand_total,
+            "currency": "Philippine Pesos (pesos, ₱)",
+        }
+
+
+def confirm_order_and_deduct_stock(session_id: str, db_path: str = DB_PATH) -> Dict[str, Any]:
+    """
+    Transactional order confirmation:
+    1. Validates all line items against current inventory.
+    2. Atomically decrements menu_items stock_qty in SQLite.
+    3. Sets table_sessions status to 'STATE_CONFIRMED'.
+    4. Generates an immutable digital checkout receipt.
+    """
+    with get_db_connection(db_path) as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("BEGIN TRANSACTION")
+
+            cursor.execute("SELECT table_no, status FROM table_sessions WHERE session_id = ?", (session_id,))
+            session = cursor.fetchone()
+            if not session:
+                conn.rollback()
+                return {"status": "error", "message": f"Session {session_id} not found."}
+
+            # Retrieve order line items
+            cursor.execute(
+                """
+                SELECT oli.item_id, oli.quantity, oli.special_instructions, oli.unit_price,
+                       mi.name, mi.stock_qty
+                FROM order_line_items oli
+                JOIN menu_items mi ON oli.item_id = mi.id
+                WHERE oli.session_id = ?
+                """,
+                (session_id,),
+            )
+            items = cursor.fetchall()
+            if not items:
+                conn.rollback()
+                return {"status": "error", "message": "Cannot confirm empty order. Cart has no items."}
+
+            # Check stock for all items
+            for it in items:
+                if it["stock_qty"] < it["quantity"]:
+                    conn.rollback()
+                    return {
+                        "status": "stock_error",
+                        "message": f"Transactional failure: '{it['name']}' only has {it['stock_qty']} in stock, but {it['quantity']} was ordered.",
+                    }
+
+            # Atomically decrement stock
+            for it in items:
+                cursor.execute(
+                    "UPDATE menu_items SET stock_qty = stock_qty - ? WHERE id = ?",
+                    (it["quantity"], it["item_id"]),
+                )
+
+            # Update session state to STATE_CONFIRMED
+            cursor.execute(
+                "UPDATE table_sessions SET status = 'STATE_CONFIRMED', updated_at = CURRENT_TIMESTAMP WHERE session_id = ?",
+                (session_id,),
+            )
+
+            conn.commit()
+
+            # Compile final receipt
+            tab = view_current_order(session_id, db_path=db_path)
+            receipt_id = f"PB-{session['table_no']}-{str(uuid.uuid4())[:6].upper()}"
+
+            return {
+                "status": "success",
+                "receipt_id": receipt_id,
+                "table_no": session["table_no"],
+                "session_id": session_id,
+                "fsm_state": "STATE_CONFIRMED",
+                "message": "Order successfully finalized and confirmed! Kitchen ticket dispatched.",
+                "itemized_receipt": tab["line_items"],
+                "subtotal": tab["subtotal"],
+                "vat_included": tab["vat_12_pct_breakdown"],
+                "grand_total": tab["grand_total"],
+                "currency": "Philippine Pesos (pesos, ₱)",
+            }
+        except Exception as e:
+            conn.rollback()
+            return {"status": "error", "message": f"Database transaction aborted: {str(e)}"}

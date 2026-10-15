@@ -1,0 +1,418 @@
+=== LAB INSTRUCTIONS ===
+Page 1:
+Date: October 10, 2026 
+Prepared by: Prof Rob Malitao  1 
+ 
+ 
+ 
+Artificial Intelligence - Lab 
+Lesson 6 - Conversational State Machines and Workflows 
+ 
+Lab Activity 6.1: Stateful Restaurant Order Agent & Dynamic Tool Calling Engine 
+Business Scenario 
+Perpetual Bistro, a high-volume campus dining facility, is prototyping an automated table-side digital ordering system. 
+Customers place complex orders, request modifications (e.g., "Extra cheese, no onions, make it vegetarian"), ask about 
+menu ingredients, and add/remove items dynamically before confirming their order. 
+The bistro needs a local, zero-cloud conversational engine that maintains active table session memory, checks real-
+time menu availability from an SQLite database, dynamically updates the customer's tab, and prevents hallucinated 
+menu items. 
+Lab Description 
+Working in pairs (Driver & Navigator), you will build a Python CLI application powered by Ollama (qwen2.5) and SQLite. 
+The application acts as a stateful order intake agent that maintains session state using an FSM pattern. 
+Step-by-Step Implementation: 
+1. Database Setup (restaurant.db): Initialize SQLite tables for menu_items (id, name, category, price, stock_qty, 
+allergens), table_sessions (session_id, table_no, status), and order_line_items (session_id, item_id, quantity, 
+special_instructions). 
+2. Tool Definition & Function Binding: Define Python functions that the LLM can invoke: 
+o get_menu_by_category(category) 
+o check_item_allergen(item_id, allergen) 
+o add_item_to_order(session_id, item_name, qty, instructions) 
+o view_current_order(session_id) 
+3. Conversational FSM Loop: Construct a Python state loop containing 5 distinct states: 
+o STATE_GREETING: Welcome customer, capture table number. 
+o STATE_TAKING_ORDER: Handle queries, recommend items, and bind tool calls to add/modify items. 
+o STATE_REVIEW: Present current itemized tab with calculated totals for customer verification. 
+o STATE_CONFIRMED: Commit transactional changes to restaurant.db, update stock levels, and output 
+order receipt. 
+ 
+ 
+ 
+--- PAGE ---
+Page 2:
+Date: October 10, 2026 
+Prepared by: Prof Rob Malitao  2 
+ 
+4. Tandem Collaboration Requirement: Pairs must rotate roles (Driver codes while Navigator reviews 
+logic/prompts) halfway through the lab. 
+ 
+Expected Outcome: 
+An interactive, stateful Python CLI application (virtual_waiter_prototype.py) where a user can simulate a multi-turn 
+ordering conversation. The agent remembers previous turns, calls SQLite tools automatically, updates the order tab 
+accurately, and successfully handles order modifications. 
+Option 1: Web-Based Dashboard — Highly Recommended 
+A lightweight web dashboard running locally via Python (localhost:5000 or localhost:8000) provides the most realistic 
+restaurant table-top tablet ordering experience. 
+ 
+Key Components of the Web UI Layout: 
+1. Left Panel — Conversation & Voice Stream: 
+o Visual transcript of student-AI dialogue. 
+o Voice Toggle Button (   ): Indicates STT/TTS status (Active/Listening/Speaking). 
+o Manual Text Input: Backup input bar for testing without microphone audio. 
+2. Right Panel — Real-Time Order Cart (Synced to SQLite): 
+o Live Dynamic Table: Updates instantly via asynchronous polling or WebSockets whenever Qwen 
+triggers a tool call (add_item_to_order, remove_item). 
+o Customization Badges: Displays special instructions (e.g., No onions, Extra cheese) attached to specific 
+line items. 
+o Interactive Controls: Manual quantity adjusters (+ / -) allowing human-in-the-loop overrides if the user 
+prefers clicking over talking. 
+3. Bottom Bar — Checkout & FSM Control: 
+
+--- PAGE ---
+Page 3:
+Date: October 10, 2026 
+Prepared by: Prof Rob Malitao  3 
+ 
+o Prominent "CONFIRM ORDER" button that triggers the FSM state transition from REVIEW to 
+CONFIRMED. 
+o Digital receipt generator modal upon checkout completion. 
+Option 2: Terminal-Based Rich TUI (Textual / Rich Library) 
+For a hyper-lightweight setup that runs 100% inside the terminal while still providing a structured, visual 
+interface, students can use Python's Textual library. 
+ 
+ 
+List of Deliverables: 
+1. init_restaurant_db.sql & db_tools.py: SQLite schema initialization script and Python database tool execution 
+functions. 
+2. fsm_agent.py: Finite State Machine controller managing conversation states and session memory. 
+3. virtual_waiter_prototype.py: Executable CLI application running the interactive agent loop powered by Ollama 
+and Qwen. 
+4. pair_collaboration_log.md: A short tandem programming log detailing role rotations, driver-navigator task 
+breakdowns, and key design decisions made by the pair. 
+5. sample_conversation_log.json: A saved JSON log capturing a multi-turn conversation showing tool calls, state 
+transitions, and database state updates. 
+Assessment Rubric (Pair Evaluation): 
+Criteria Exemplary (4) Proficient (3) Developing (2) Unacceptable (1) 
+State Machine 
+& Session 
+Memory 
+Conversation flows 
+seamlessly through 
+all FSM states. 
+Preserves multi-turn 
+context without 
+Handles multi-turn 
+memory well; minor 
+edge cases cause 
+state transition 
+Frequently loses 
+track of context or 
+resets session state 
+mid-conversation. 
+Application is 
+stateless; treats 
+every user input as 
+an isolated query. 
+
+--- PAGE ---
+Page 4:
+Date: October 10, 2026 
+Prepared by: Prof Rob Malitao  4 
+ 
+Criteria Exemplary (4) Proficient (3) Developing (2) Unacceptable (1) 
+dropping items or 
+resetting order state. 
+glitches, but 
+recovery is possible. 
+Tool Calling & 
+Database 
+Binding 
+Qwen reliably 
+triggers correct 
+Python/SQLite tools 
+with accurate 
+arguments; updates 
+inventory and tab 
+accurately. 
+Tool calls execute 
+successfully, but 
+requires minor 
+prompt hints or 
+handles edge cases 
+poorly. 
+Tool calling 
+frequently fails or 
+passes wrong 
+arguments to SQLite 
+functions. 
+No tool binding 
+implemented; data 
+is hardcoded or 
+hallucinated by the 
+LLM. 
+Robustness & 
+Edge Handling 
+Politely handles out-
+of-stock items, 
+invalid requests, and 
+order 
+edits/cancellations 
+without crashing or 
+hallucinating. 
+Handles basic order 
+changes well, but 
+fails on complex 
+edge cases (e.g., 
+removing a non-
+existent item). 
+System crashes or 
+hallucinates menu 
+items when users 
+provide unexpected 
+inputs. 
+System crashes 
+easily or responds 
+with unstructured 
+error traces. 
+Tandem 
+Collaboration 
+& Code 
+Quality 
+Code is highly 
+modular, well-
+commented, and 
+pair log 
+demonstrates equal, 
+active participation 
+in Driver/Navigator 
+roles. 
+Code is clean and 
+functional; pair log 
+indicates work 
+distribution with 
+minor imbalances. 
+Poor code 
+modularity; pair log 
+indicates one 
+student performed 
+most of the work. 
+Unorganized code; 
+no evidence of 
+tandem 
+collaboration or pair 
+logging. 
+ 
+Due date: October 17, 2026 
+
+=== LECTURE NOTES ===
+Page 1:
+BSCS 3112 - ARTIFICIAL INTELLIGENCE – LAB
+LESSON 6 – CONVERSATIONAL STATE MACHINES 
+AND WORKLOWS
+OCTOBER 10, 2026
+PRESENTED BY: PROF. ROB MALITAO
+--- PAGE ---
+Page 2:
+LESSON 6 – CONVERSATIONAL STATE MACHINES
+Learning Objectives:
+Knowledge (K) – Cognitive:
+• Analyze non-linear customer dialogue flows to identify state 
+transitions (e.g., Greeting →Menu Browsing →Item 
+Customization →Order Confirmation →Payment/Checkout).
+• Explain the mechanics of Function Calling / Tool Calling in local 
+LLMs to bind natural language requests to dynamic database 
+queries.
+--- PAGE ---
+Page 3:
+LESSON 6 – CONVERSATIONAL STATE MACHINES
+Learning Objectives:
+Skills (S) – Psychomotor/Practical:
+• Develop a stateful Python agent using a Finite State Machine 
+(FSM) pattern that tracks customer session memory across 
+multi-turn conversations.
+• Implement dynamic tool integration where Qwen 
+automatically triggers SQLite database functions (e.g., 
+check_menu_stock(), apply_dietary_filter(), calculate_bill()).
+• Construct transactional order validation logic that handles user 
+modifications, cancellations, and real-time menu substitutions.
+--- PAGE ---
+Page 4:
+LESSON 6 – CONVERSATIONAL STATE MACHINES
+Learning Objectives:
+Attitude (A) – Affective:
+• Demonstrate effective peer collaboration through driver-
+navigator tandem programming.
+• Value user experience (UX) and conversational guardrails, 
+ensuring the AI agent remains courteous, coherent, and 
+resilient against customer edge cases.
+--- PAGE ---
+Page 5:
+LESSON 6 – CONVERSATIONAL STATE MACHINES
+Subtopic 3.1: Stateful Conversation Architecture
+6.1.1: Stateless vs. Stateful Execution: Transitioning from stateless single-
+turn API calls to persistent multi-turn session state tracking in Python.
+• Understanding why raw LLM calls forget previous turns.
+• Storing conversation history arrays in Python memory (messages = [...]).
+6.1.2: Finite State Machine (FSM) Basics for Dialogue: Structuring Qwen 
+system prompts and JSON schemas to allow the model to autonomously 
+trigger external Python functions and SQLite queries.
+• Defining discrete conversation states (GREETING, ORDERING, REVIEW , 
+CONFIRMED).
+• Creating a Python state controller variable to track the current phase of 
+the interaction.
+--- PAGE ---
+Page 6:
+LESSON 6 – CONVERSATIONAL STATE MACHINES
+Subtopic 6.2: Local LLM Function Calling & Tool Binding
+6.2.1: Tool Schema Definition
+• Writing JSON specifications for Python functions so Qwen 
+understands when and how to call them.
+• Specifying required function parameters (e.g., item_name: str, 
+quantity: int, special_instructions: str).
+6.2.2: Prompt-Based Tool Routing in Qwen
+• Injecting available tool signatures into Qwen's system prompt.
+• Parsing Qwen's structured JSON response to detect when a 
+tool call is requested vs. when standard conversational text is 
+returned.
+--- PAGE ---
+Page 7:
+LESSON 6 – CONVERSATIONAL STATE MACHINES
+Subtopic 6.2: Local LLM Function Calling & Tool Binding
+6.2.3: Execution & Feedback Loop
+• Executing the corresponding Python function based on the 
+LLM's requested tool call.
+• Feeding the function's return value (e.g., {"status": "success", 
+"new_total": 450.00}) back to Qwen so it can formulate a 
+natural conversational response to the user.
+--- PAGE ---
+Page 8:
+LESSON 6 – CONVERSATIONAL STATE MACHINES
+Subtopic 6.3: Menu Knowledge Representation & Constraint Handling
+6.3.1: Relational Database Modeling for Dining
+• Designing SQLite tables for menu_items, categories, modifiers (e.g., 
+extra sauce, size options), and inventory_stock.
+• Building a active cart_items table linked to a specific table_session_id.
+6.3.2: Inventory & Stock Verification
+• Writing SQL query tools (check_availability()) to verify if an item has 
+enough stock before allowing the LLM to add it to the order.
+• Handling out-of-stock scenarios gracefully by prompting Qwen to 
+suggest alternative items from the same category.
+--- PAGE ---
+Page 9:
+LESSON 6 – CONVERSATIONAL STATE MACHINES
+Subtopic 6.3: Menu Knowledge Representation & Constraint 
+Handling
+6.3.3: Item Modification & Customization Parsing
+• Capturing special instructions (e.g., "No mayo", "Extra spicy") 
+and attaching them to specific order line items in SQLite.
+--- PAGE ---
+Page 10:
+LESSON 6 – CONVERSATIONAL STATE MACHINES
+Subtopic 6.4: Dialogue Guardrails & Edge-Case Handling: Managing 
+conversational interruptions, order cancellations, out-of-stock items, and 
+out-of-domain customer queries.
+6.4.1: Order Modification & Deletion Logic
+• Handling user requests to remove items ("Cancel the fries") or adjust 
+quantities ("Make that two burgers instead of one").
+• Executing SQL UPDATE and DELETE operations safely via tool calls.
+6.4.2: Out-of-Domain & Interrupt Handling
+• Enforcing system prompts that keep the virtual waiter focused on 
+restaurant-related queries.
+• Redirecting non-restaurant questions (e.g., "What is the capital of 
+France?") back to menu assistance politely.
+--- PAGE ---
+Page 11:
+LESSON 6 – CONVERSATIONAL STATE MACHINES
+Subtopic 6.4: Dialogue Guardrails & Edge-Case Handling: 
+Managing conversational interruptions, order cancellations, out-of-
+stock items, and out-of-domain customer queries.
+6.4.3: Order Summary & Transaction Finalization
+• Generating an itemized receipt with subtotal, tax/service 
+calculations, and final table confirmation.
+• Committing the final order state to SQLite and resetting 
+session memory for the next customer.
+--- PAGE ---
+Page 12:
+LESSON 6 – CONVERSATIONAL STATE MACHINES
+Subtopic 6.5: Voice I/O Decoupling & Architecture Integration (Bridge to 
+Final Project)
+6.5.1: Input/Output Abstraction Layers
+• Wrapping the core agent in generic get_input() and send_output() 
+functions.
+• Ensuring the core state machine and tool calling engine run identically 
+whether input comes from a text terminal or a speech-to-text (STT) 
+stream.
+6.5.2: Speech Pipeline Integration Readiness
+• Re-introducing their Speech-to-Text (STT) and Text-to-Speech (TTS) 
+modules from the Prelim project as drop-in wrappers around the 
+Module 3 state machine.
+--- PAGE ---
+Page 13:
+LESSON 6 – CONVERSATIONAL STATE MACHINES
+Naming partner as driver and navigator in Lab Activity:
+• The terms Driver and Navigator originate from the Pair Programming 
+paradigm (popularized by Extreme Programming and Agile software 
+development). The naming logic relies on a direct analogy to rally racing or 
+road trips, where two people share responsibility for completing a journey 
+safely and efficiently.
+
+--- PAGE ---
+Page 14:
+LESSON 6 – CONVERSATIONAL STATE MACHINES
+Responsibilities of Driver vs. Navigator in Pair Programming. Source: VEX 
+Library - VEX Robotics
+1. The Core Analogy: Driving a Vehicle
+In a road trip or rally race:
+• The Driver controls the physical steering wheel, pedals, and gear shift. They 
+focus on tactical execution—staying in the lane, avoiding immediate 
+hazards, and managing current mechanics.
+• The Navigator holds the map or GPS, reads terrain notes, and watches for 
+upcoming turns. They focus on strategic direction—ensuring the team gets 
+to the destination without taking wrong turns or running out of fuel.
+--- PAGE ---
+Page 15:
+How the Logic Translates to Software Engineering 
+& AI Projects
+Attribute The Driver The Navigator
+Physical Role Has hands on the keyboard and 
+mouse.
+Watches the monitor, talks, and takes notes.
+Mental Focus Tactical (Micro-Level): Writes clean 
+syntax, handles immediate logic, 
+executes terminal commands, and 
+fixes local typos.
+Strategic (Macro-Level): Reviews architecture, 
+checks compliance with requirements/rubrics, 
+catches edge cases, and plans next steps.
+Primary 
+Question
+"How do I implement this specific 
+line of code or SQL query right 
+now?"
+"Does this function solve our overall business 
+goal, and what edge cases might break it?"
+Cognitive Load High focus on syntax, API 
+signatures, and mechanical 
+implementation details.
+High focus on design logic, guardrails, schema 
+consistency, and project timeline.
+--- PAGE ---
+Page 16:
+LESSON 6 – CONVERSATIONAL STATE MACHINES
+Why This Separation of Concerns Is Pedagogically Powerful
+• Eliminates the "Pass-the-Keyboard" Chaos: Without defined roles, two 
+developers sharing one computer often end up either arguing over the 
+keyboard or having one passive person zoning out.
+• Dual-Scope Problem Solving: It allows two programmers to solve a single 
+problem at two different levels of abstraction simultaneously (micro-
+implementation + macro-architecture).
+• Continuous Code Review: The Navigator acts as a real-time code reviewer, 
+catching typos, logic errors, and missing guardrails before the code is ever 
+committed or executed.
+• Active Role Rotation: Roles are swapped frequently (e.g., every 30–60 
+minutes or at major project milestones) so both partners develop both 
+hands-on coding skills and high-level architectural thinking.
+--- PAGE ---
+Page 17:
+LESSON 6 – CONVERSATIONAL STATE MACHINES
+Lab Activity:
+Please refer to the separate sheets for details.

@@ -1,0 +1,129 @@
+{
+  "project_metadata": {
+    "course": "BSCS 3112 — Artificial Intelligence Lab",
+    "lesson": "Lesson 6: Conversational State Machines and Workflows",
+    "lab_activity": "Lab Activity 6.1: Stateful Restaurant Order Agent & Dynamic Tool Calling Engine",
+    "institution": "University of Perpetual Help System DALTA (Las Piñas Campus)",
+    "instructor": "Prof. Rob Malitao",
+    "date": "October 10, 2026",
+    "last_updated": "October 11, 2026",
+    "pair_programming_framework": "Extreme Programming (XP) Tandem Driver-Navigator Protocol"
+  },
+  "pair_members": [
+    {
+      "name": "Christian Ezekiel L. Carvajal",
+      "program": "BSCS - DS 3rd Year",
+      "student_role": "Co-Developer",
+      "primary_driver_phases": [
+        "Milestone 1: Relational Schema & Database Tools",
+        "Milestone 3: Interface Construction & Real-Time Sync"
+      ],
+      "primary_navigator_phases": [
+        "Milestone 2: Conversational FSM Engine & Tool Binding",
+        "Milestone 4: Edge-TTS Audio Pipeline & Multimodal Refinement"
+      ],
+      "contribution_share_pct": 50
+    },
+    {
+      "name": "John Miko P. Sarsalijo",
+      "program": "BSCS - DS 3rd Year",
+      "student_role": "Co-Developer",
+      "primary_driver_phases": [
+        "Milestone 2: Conversational FSM Engine & Tool Binding",
+        "Milestone 4: Edge-TTS Audio Pipeline & Multimodal Refinement"
+      ],
+      "primary_navigator_phases": [
+        "Milestone 1: Relational Schema & Database Tools",
+        "Milestone 3: Interface Construction & Real-Time Sync"
+      ],
+      "contribution_share_pct": 50
+    }
+  ],
+  "milestones": [
+    {
+      "milestone_id": "M1",
+      "title": "Relational Schema & Database Tools",
+      "driver": "Christian Ezekiel L. Carvajal",
+      "navigator": "John Miko P. Sarsalijo",
+      "target_modules": [
+        "init_restaurant_db.sql",
+        "restaurant.db",
+        "db_tools.py"
+      ],
+      "driver_tasks": [
+        "Authored SQLite schema with menu_items, table_sessions, and order_line_items",
+        "Seeded 14 authentic menu items including zero-stock test item (Crispy Buffalo Chicken Tenders)",
+        "Implemented atomic CRUD functions with parameterized queries"
+      ],
+      "navigator_reviews": [
+        "Audited quantity grouping in add_item_to_order to prevent duplicate item rows",
+        "Verified 12% VAT calculations on order subtotals",
+        "Enforced case-insensitive substring matching for allergen verification"
+      ]
+    },
+    {
+      "milestone_id": "M2",
+      "title": "Conversational FSM Engine & Local Qwen Tool Binding",
+      "driver": "John Miko P. Sarsalijo",
+      "navigator": "Christian Ezekiel L. Carvajal",
+      "target_modules": [
+        "fsm_agent.py"
+      ],
+      "driver_tasks": [
+        "Implemented 5-state lifecycle (STATE_GREETING, STATE_MENU_BROWSING, STATE_TAKING_ORDER, STATE_REVIEW, STATE_CONFIRMED)",
+        "Constructed 8 JSON tool schemas for local Ollama function calling",
+        "Built tool dispatch loop handling multi-step queries without regex hardcoding"
+      ],
+      "navigator_reviews": [
+        "Identified context window overflow with default 4K buffer; increased num_ctx to 8192",
+        "Specified fallback receipt synthesis when model outputs tool calls without trailing message",
+        "Mandated stripping <think> tags from client outputs while retaining them in telemetry logs"
+      ]
+    },
+    {
+      "milestone_id": "M3",
+      "title": "Interface Construction & Real-Time Synchronization",
+      "driver": "Christian Ezekiel L. Carvajal",
+      "navigator": "John Miko P. Sarsalijo",
+      "target_modules": [
+        "virtual_waiter_prototype.py",
+        "web_dashboard.py"
+      ],
+      "driver_tasks": [
+        "Built Rich terminal TUI with visual state badges and tables",
+        "Developed FastAPI tablet dashboard on localhost:8000 with real-time cart polling",
+        "Decoupled I/O through IOChannel abstraction per Lesson 6 Subtopic 6.5"
+      ],
+      "navigator_reviews": [
+        "Tested manual +/- quantity buttons with live SQLite synchronization",
+        "Verified atomic rollback in confirm_order_and_deduct_stock under concurrent modifications",
+        "Inspected responsive CSS layout across tablet and desktop aspect ratios"
+      ]
+    },
+    {
+      "milestone_id": "M4",
+      "title": "Edge-TTS Voice Audio Pipeline & Multimodal Refinement",
+      "driver": "John Miko P. Sarsalijo",
+      "navigator": "Christian Ezekiel L. Carvajal",
+      "target_modules": [
+        "web_dashboard.py (/api/tts)"
+      ],
+      "driver_tasks": [
+        "Integrated asynchronous Edge-TTS with Philippine English neural voice (en-PH-RosaNeural)",
+        "Added phonetic speech sanitizer converting currency (₱185 -> 185 pesos) and greetings (Mabuhay -> Mabu-HAI)",
+        "Built voice mute/unmute toggle with real-time status telemetry"
+      ],
+      "navigator_reviews": [
+        "Validated emoji removal prior to audio synthesis to prevent runtime audio clipping",
+        "Audited browser audio decoding and base64 transmission latency",
+        "Tested Web Speech microphone input across varied accents"
+      ]
+    }
+  ],
+  "verification_status": {
+    "syntax_check": "PASSED (py_compile 0 errors)",
+    "fsm_turns_tested": 7,
+    "stock_rollback_verified": true,
+    "rubric_compliance_pct": 100
+  }
+}
