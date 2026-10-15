@@ -129,12 +129,13 @@ The conversation operates across 5 discrete, deterministically managed states:
 
 ### 3.4. Interfaces
 - **Option 1 (Web Dashboard - `web_dashboard.py`)**:
-  - FastAPI server with WebSockets running at `http://127.0.0.1:8000`.
-  - McDonald's Kiosk language toggle bar.
-  - Split-screen layout: Left panel features visual dialogue transcript and voice toggle; Right panel features live dynamic order cart synced to SQLite.
-  - Interactive quantity adjusters (`+` / `-`) for human-in-the-loop overrides.
-  - Special instruction customization badges (`No onions`, `Extra spicy`, `Gluten-free`).
-  - Checkout confirmation bar with receipt modal.
+  - **Official UPHSD Branding System**: Production-grade theme modeled directly on the University of Perpetual Help System DALTA website (`#7B1113` Perpetual Maroon, `#D4AF37` Imperial Gold, `#0A0304` Obsidian Kiosk Canvas).
+  - **Cameo Seal & Motto Ribbon**: Features the authentic UPHSD Cameo Seal SVG (laurel leaves, cameo shield, torch of truth, and star of excellence) with institutional motto ribbon (*"Character Building is Nation Building • Las Piñas Campus"*).
+  - **Sound Wave Audio Visualizer**: 5-bar animated audio waveform meter synced to Edge-TTS voice playback and microphone input.
+  - **Menu Category Quick-Filter Tabs**: Horizontal interactive category chips (`🌟 All Specials`, `🍲 Mains`, `🍟 Sides`, `🥤 Beverages`, `🍨 Desserts`) for rapid 1-click menu exploration.
+  - **McDonald's Kiosk Dual-Language Selector**: High-contrast interactive pill buttons for 🇵🇭 Filipino (Taglish / Rosa) and 🇺🇸 English (US / Jenny).
+  - **Split-Screen Ordering Workspace**: Left panel dialogue stream with custom UPHSD waiter branding; Right panel real-time cart table with quantity adjusters (`+` / `-`).
+  - **Official Digital Cashier Receipt**: University cashier format with print (`window.print()`) and plain text download (`downloadReceiptTxt()`).
   - Zero horizontal document overflow (`scrollWidth <= clientWidth`).
 - **Option 2 (CLI TUI - `virtual_waiter_prototype.py`)**:
   - Terminal-based rich interface using the `rich` library.
@@ -147,7 +148,7 @@ The conversation operates across 5 discrete, deterministically managed states:
 1. **Database & Schema Engineering**: Wrote `init_restaurant_db.sql` and `db_tools.py` with transactional atomic execution and SQLite stock synchronization.
 2. **FSM Core Logic**: Authored `fsm_agent.py` implementing all 5 state transitions, Ollama JSON tool schemas, and prompt fallback boundaries.
 3. **Voice Subsystem**: Built Edge-TTS pipeline, acoustic phonetic normalizer, and dual-voice language switching (`RosaNeural` & `JennyNeural`).
-4. **Web Kiosk Dashboard**: Developed `web_dashboard.py` with FastAPI, WebSockets, real-time cart polling, McDonald's Kiosk language toggles, and responsive styling.
+4. **Web Kiosk Dashboard & Institutional Overhaul**: Developed and polished `web_dashboard.py` with official UPHSD Maroon & Gold branding, Cameo seal, motto ribbon, audio visualizer, category tabs, and receipt printing.
 5. **CLI TUI Prototype**: Implemented `virtual_waiter_prototype.py` for full terminal execution.
 6. **Documentation & Deliverables Package**: Drafted 12-page academic report (`.docx` & `.pdf`), `pair_collaboration_log.md`, `sample_conversation_log.json`, and organized directory structure.
 
@@ -180,17 +181,12 @@ python -c "import db_tools; db_tools.init_db()"
 Miko and his AI agent are invited to choose and implement one or more of these high-value, rubric-compliant enhancements:
 
 ### High-Impact UI/UX Recommendations (In `web_dashboard.py`)
-1. **Menu Category Quick-Filter Tabs**:
-   - Add category tabs above the item catalog or conversation bar: `[ All ]`, `[ 🍲 Mains ]`, `[ 🍟 Sides ]`, `[ 🥤 Drinks ]`, `[ 🍨 Desserts ]`.
-   - Clicking a tab filters the quick-order suggestions or displays item cards with prices and stock count.
-2. **Audio Activity Waveform / Meter**:
-   - Add an animated CSS/SVG audio waveform next to the voice toggle button that pulses when the agent is speaking or TTS audio is streaming.
-3. **Receipt Print / Export Feature**:
-   - Inside the checkout confirmation modal (`showReceiptModal()`), add a "🖨️ Print Receipt" button and a "📥 Save Receipt as TXT" button.
-4. **Allergen Visual Badges**:
+1. **Allergen Visual Badges**:
    - In the cart table and quick-add chips, display color-coded warning pills (e.g., `🥜 Peanuts`, `🌾 Gluten`, `🦐 Shellfish`, `🥛 Dairy`) when dishes contain flagged allergens.
-5. **Interactive Dish Customization Modal**:
+2. **Interactive Dish Customization Modal**:
    - When a user clicks an item card, provide a small popup with checkboxes for common Filipino customizations (`Extra Garlic Rice`, `Spicy`, `Less Ice`, `Separate Sauce`).
+3. **Table Number Selector / Switcher**:
+   - Add a dropdown or modal in the header allowing staff to switch active table sessions (`Table #1` through `Table #10`).
 
 ### Code Quality & Testing Recommendations
 1. **Automated End-to-End Test Script**:

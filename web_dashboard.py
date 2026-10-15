@@ -260,23 +260,44 @@ def index_page():
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Perpetual Bistro — Digital Ordering Tablet</title>
+    <title>University of Perpetual Help — Perpetual Bistro Kiosk</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-body: #0b1120;
-            --surface-card: #131c31;
-            --surface-hover: #1b2640;
-            --surface-accent: #1e293b;
-            --border-subtle: #243452;
-            --border-focus: #3b82f6;
-            --accent-primary: #851419; /* Perpetual Maroon */
-            --accent-gold: #f59e0b;    /* Perpetual Gold */
-            --accent-blue: #38bdf8;
-            --accent-green: #10b981;
-            --text-primary: #f8fafc;
-            --text-secondary: #94a3b8;
-            --text-muted: #64748b;
-            --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            /* Official University of Perpetual Help System DALTA Palette */
+            --uphsd-maroon: #7B1113;        /* Signature UPHSD Maroon */
+            --uphsd-maroon-dark: #4A070B;   /* Deep Institutional Maroon */
+            --uphsd-maroon-deep: #2A0407;   /* Charcoal Maroon Shadow */
+            --uphsd-maroon-light: #9B1B1E;  /* Bright Maroon Accent */
+            --uphsd-maroon-glow: rgba(123, 17, 19, 0.45);
+
+            --uphsd-gold: #D4AF37;          /* Official Academic Gold */
+            --uphsd-gold-bright: #F5B041;   /* Radiant Interactive Gold */
+            --uphsd-gold-deep: #AA820A;     /* Metallic Burnished Gold */
+            --uphsd-gold-light: #FEF3C7;    /* Cream Gold Text */
+            --uphsd-gold-glow: rgba(212, 175, 55, 0.35);
+
+            /* Surfaces & Dark Mode Kiosk Depth */
+            --bg-body: #0A0304;             /* Obsidian with Warm Maroon Base */
+            --surface-panel: #120406;       /* Split Panel Canvas */
+            --surface-card: #1C080B;        /* Elevated Container Card */
+            --surface-hover: #260B10;       /* Interactive Hover State */
+            --surface-accent: #320E15;      /* Accent Layer */
+            --border-subtle: #3A0F14;       /* Base Structural Border */
+            --border-gold: rgba(212, 175, 55, 0.35); /* Institutional Gold Accent Border */
+            --border-focus: #F5B041;        /* Focused Ring */
+
+            /* Typography & Neutrals */
+            --text-primary: #FFFFFF;        /* Pure White Headings */
+            --text-secondary: #E8D8D3;      /* Soft Parchment Body */
+            --text-muted: #A38286;          /* Muted Dusty Rose */
+            --accent-green: #10B981;        /* Checkout & Stock Affirmation */
+
+            --font-heading: 'Cinzel', Georgia, 'Times New Roman', serif;
+            --font-ui: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --font-mono: 'JetBrains Mono', Consolas, monospace;
         }
 
         * {
@@ -286,91 +307,198 @@ def index_page():
         }
 
         body {
-            font-family: var(--font-family);
+            font-family: var(--font-ui);
             background: var(--bg-body);
+            background-image: 
+                radial-gradient(ellipse at 15% 10%, rgba(123, 17, 19, 0.22) 0%, transparent 60%),
+                radial-gradient(ellipse at 85% 90%, rgba(212, 175, 55, 0.12) 0%, transparent 50%);
             color: var(--text-primary);
             height: 100vh;
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            -webkit-font-smoothing: antialiased;
         }
 
-        /* Top Header */
-        header {
-            background: #0f172a;
-            border-bottom: 1px solid var(--border-subtle);
-            padding: 12px 24px;
+        /* Top Institutional Motto Ribbon */
+        .uphsd-top-ribbon {
+            background: linear-gradient(90deg, #240305 0%, #3D0609 50%, #240305 100%);
+            border-bottom: 1px solid rgba(212, 175, 55, 0.35);
+            padding: 4px 24px;
+            font-size: 0.72rem;
             display: flex;
             align-items: center;
             justify-content: space-between;
+            color: var(--uphsd-gold-light);
+            letter-spacing: 0.04em;
+            user-select: none;
+            z-index: 10;
+        }
+
+        .ribbon-motto {
+            font-family: var(--font-heading);
+            font-weight: 700;
+            color: var(--uphsd-gold-bright);
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .ribbon-campus {
+            color: var(--text-muted);
+            margin-left: 12px;
+            font-size: 0.7rem;
+        }
+
+        .ribbon-badge {
+            background: rgba(212, 175, 55, 0.15);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            color: var(--uphsd-gold-bright);
+            padding: 2px 10px;
+            border-radius: 9999px;
+            font-size: 0.68rem;
+            font-weight: 600;
+        }
+
+        /* Institutional Main Header */
+        header {
+            background: linear-gradient(135deg, #380508 0%, #5C0B12 45%, #7B1113 75%, #420609 100%);
+            border-bottom: 3px solid var(--uphsd-gold);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 1px 10px var(--uphsd-gold-glow);
+            padding: 10px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+            z-index: 9;
         }
 
         .brand-container {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 14px;
         }
 
-        .brand-logo {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(135deg, var(--accent-primary), #991b1b);
-            border-radius: 8px;
+        .brand-seal {
+            width: 48px;
+            height: 48px;
+            flex-shrink: 0;
+            filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5));
+            transition: transform 0.25s ease;
+        }
+
+        .brand-seal:hover {
+            transform: scale(1.05) rotate(1deg);
+        }
+
+        .brand-title {
             display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            border: 1px solid var(--accent-gold);
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .university-name {
+            font-family: var(--font-heading);
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: var(--uphsd-gold-bright);
+            letter-spacing: 0.09em;
+            text-transform: uppercase;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.6);
         }
 
         .brand-title h1 {
-            font-size: 1.15rem;
-            font-weight: 700;
-            letter-spacing: -0.02em;
-            color: #ffffff;
+            font-family: var(--font-heading);
+            font-size: 1.28rem;
+            font-weight: 900;
+            letter-spacing: 0.04em;
+            color: #FFFFFF;
+            text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6), 0 0 12px rgba(212, 175, 55, 0.35);
+            line-height: 1.1;
         }
 
         .brand-title p {
-            font-size: 0.75rem;
+            font-size: 0.72rem;
             color: var(--text-secondary);
+            font-weight: 500;
         }
 
         .header-meta {
             display: flex;
             align-items: center;
-            gap: 16px;
+            gap: 12px;
+            flex-wrap: wrap;
         }
 
         .meta-pill {
-            background: var(--surface-card);
-            border: 1px solid var(--border-subtle);
+            background: rgba(22, 6, 8, 0.85);
+            border: 1px solid var(--border-gold);
+            color: var(--uphsd-gold-light);
             padding: 6px 14px;
             border-radius: 9999px;
             font-size: 0.8rem;
+            font-weight: 600;
             display: flex;
             align-items: center;
             gap: 6px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
         }
 
+        /* Sound Wave Audio Visualizer */
+        .audio-wave-container {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            height: 20px;
+            padding: 0 4px;
+        }
+
+        .wave-bar {
+            width: 3px;
+            height: 6px;
+            background: var(--uphsd-gold-bright);
+            border-radius: 2px;
+            transition: height 0.15s ease;
+        }
+
+        .audio-wave-container.speaking .wave-bar {
+            animation: wavePulse 1s ease-in-out infinite;
+        }
+
+        .audio-wave-container.speaking .wave-bar:nth-child(1) { animation-delay: 0.0s; }
+        .audio-wave-container.speaking .wave-bar:nth-child(2) { animation-delay: 0.2s; }
+        .audio-wave-container.speaking .wave-bar:nth-child(3) { animation-delay: 0.4s; }
+        .audio-wave-container.speaking .wave-bar:nth-child(4) { animation-delay: 0.1s; }
+        .audio-wave-container.speaking .wave-bar:nth-child(5) { animation-delay: 0.3s; }
+
+        @keyframes wavePulse {
+            0%, 100% { height: 6px; }
+            50% { height: 18px; background: #FFF; }
+        }
+
+        /* Language Selector Group */
         .lang-selector-group {
             display: inline-flex;
             align-items: center;
-            background: rgba(15, 23, 42, 0.8);
-            border: 1px solid var(--border-subtle);
+            background: rgba(28, 8, 11, 0.95);
+            border: 1px solid var(--uphsd-gold);
             border-radius: 9999px;
             padding: 2px;
             gap: 2px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
         }
 
         .lang-btn {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            padding: 5px 12px;
+            padding: 5px 14px;
             border-radius: 9999px;
             font-size: 0.78rem;
-            font-weight: 600;
-            color: var(--text-muted);
+            font-weight: 700;
+            color: var(--uphsd-gold-light);
             background: transparent;
             border: none;
             cursor: pointer;
@@ -379,43 +507,71 @@ def index_page():
         }
 
         .lang-btn:hover {
-            color: var(--text-primary);
-            background: rgba(255, 255, 255, 0.05);
+            color: #FFFFFF;
+            background: rgba(212, 175, 55, 0.18);
         }
 
         .lang-btn.active {
-            background: var(--accent-gold);
-            color: #0f172a;
-            font-weight: 700;
-            box-shadow: 0 1px 6px rgba(234, 179, 8, 0.35);
+            background: linear-gradient(135deg, var(--uphsd-gold-bright) 0%, var(--uphsd-gold) 100%);
+            color: var(--uphsd-maroon-dark);
+            font-weight: 800;
+            box-shadow: 0 2px 8px rgba(212, 175, 55, 0.4);
         }
 
         .lang-flag {
-            font-size: 0.95rem;
+            font-size: 1rem;
             line-height: 1;
         }
 
+        /* State Badges in School Heraldry */
         .state-badge {
-            font-weight: 700;
+            font-family: var(--font-heading);
+            font-weight: 800;
             text-transform: uppercase;
             font-size: 0.72rem;
-            letter-spacing: 0.05em;
-            padding: 4px 10px;
+            letter-spacing: 0.08em;
+            padding: 5px 12px;
             border-radius: 6px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
         }
 
-        .state-GREETING { background: #78350f; color: #fde68a; border: 1px solid #d97706; }
-        .state-MENU_BROWSING { background: #1e3a8a; color: #bfdbfe; border: 1px solid #3b82f6; }
-        .state-TAKING_ORDER { background: #064e3b; color: #a7f3d0; border: 1px solid #10b981; }
-        .state-REVIEW { background: #581c87; color: #f5d0fe; border: 1px solid #a855f7; }
-        .state-CONFIRMED { background: #14532d; color: #bbf7d0; border: 1px solid #22c55e; }
+        .state-GREETING {
+            background: linear-gradient(135deg, #78350F, #92400E);
+            color: #FEF3C7;
+            border: 1px solid var(--uphsd-gold);
+        }
+
+        .state-MENU_BROWSING {
+            background: linear-gradient(135deg, #1E3A8A, #2563EB);
+            color: #DBEAFE;
+            border: 1px solid #60A5FA;
+        }
+
+        .state-TAKING_ORDER {
+            background: linear-gradient(135deg, #064E3B, #047857);
+            color: #D1FAE5;
+            border: 1px solid #34D399;
+        }
+
+        .state-REVIEW {
+            background: linear-gradient(135deg, #581C87, #7E22CE);
+            color: #F5D0FE;
+            border: 1px solid #C084FC;
+        }
+
+        .state-CONFIRMED {
+            background: linear-gradient(135deg, #14532D, #15803D);
+            color: #DCFCE7;
+            border: 1px solid var(--uphsd-gold-bright);
+        }
 
         /* Main Workspace: 2-Panel Split */
         .workspace {
             flex: 1;
             display: grid;
-            grid-template-columns: 1fr 420px;
+            grid-template-columns: 1fr 440px;
             overflow: hidden;
+            background: var(--bg-body);
         }
 
         /* Left Panel: Conversation & Voice Stream */
@@ -423,26 +579,73 @@ def index_page():
             display: flex;
             flex-direction: column;
             border-right: 1px solid var(--border-subtle);
-            background: #0d1527;
+            background: var(--surface-panel);
             overflow: hidden;
+            position: relative;
         }
 
         .panel-header {
-            padding: 12px 20px;
-            background: #111a2e;
-            border-bottom: 1px solid var(--border-subtle);
+            padding: 12px 22px;
+            background: linear-gradient(180deg, #1A0609 0%, #150406 100%);
+            border-bottom: 1px solid var(--border-gold);
             display: flex;
             align-items: center;
             justify-content: space-between;
         }
 
         .panel-title {
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: var(--text-secondary);
+            font-family: var(--font-heading);
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--uphsd-gold-bright);
+            letter-spacing: 0.04em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Menu Category Quick-Filter Bar */
+        .category-tabs-bar {
             display: flex;
             align-items: center;
             gap: 8px;
+            padding: 8px 20px;
+            background: #190507;
+            border-bottom: 1px solid var(--border-subtle);
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+
+        .category-tabs-bar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .cat-pill {
+            background: var(--surface-card);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-secondary);
+            font-size: 0.76rem;
+            font-weight: 600;
+            padding: 5px 14px;
+            border-radius: 9999px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
+        }
+
+        .cat-pill:hover {
+            color: #FFFFFF;
+            border-color: var(--uphsd-gold);
+            background: var(--surface-hover);
+        }
+
+        .cat-pill.active {
+            background: linear-gradient(135deg, var(--uphsd-maroon) 0%, var(--uphsd-maroon-dark) 100%);
+            border-color: var(--uphsd-gold);
+            color: var(--uphsd-gold-bright);
+            font-weight: 700;
+            box-shadow: 0 1px 6px rgba(212, 175, 55, 0.25);
         }
 
         .chat-scroll {
@@ -458,9 +661,10 @@ def index_page():
             max-width: 85%;
             padding: 14px 18px;
             border-radius: 12px;
-            line-height: 1.5;
+            line-height: 1.55;
             font-size: 0.92rem;
             animation: fadeIn 0.2s ease-in;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
         }
 
         @keyframes fadeIn {
@@ -470,10 +674,11 @@ def index_page():
 
         .message-user {
             align-self: flex-end;
-            background: linear-gradient(135deg, #1e3a8a, #2563eb);
-            color: #ffffff;
+            background: linear-gradient(135deg, #6B0F1A 0%, #851419 100%);
+            color: #FFFFFF;
             border-bottom-right-radius: 2px;
-            border: 1px solid #3b82f6;
+            border: 1px solid var(--uphsd-gold);
+            box-shadow: 0 4px 12px rgba(123, 17, 19, 0.35);
         }
 
         .message-assistant {
@@ -481,7 +686,8 @@ def index_page():
             background: var(--surface-card);
             color: var(--text-primary);
             border-bottom-left-radius: 2px;
-            border: 1px solid var(--border-subtle);
+            border: 1px solid var(--border-gold);
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
         }
 
         .assistant-header {
@@ -489,21 +695,23 @@ def index_page():
             align-items: center;
             justify-content: space-between;
             margin-bottom: 6px;
-            font-size: 0.75rem;
-            color: var(--accent-gold);
-            font-weight: 600;
+            font-family: var(--font-heading);
+            font-size: 0.78rem;
+            color: var(--uphsd-gold-bright);
+            font-weight: 700;
+            letter-spacing: 0.04em;
         }
 
         .tool-chip {
             display: inline-block;
-            background: #1e293b;
-            color: var(--accent-blue);
+            background: #2D0A0F;
+            color: var(--uphsd-gold-bright);
             font-size: 0.72rem;
-            padding: 2px 8px;
+            padding: 3px 10px;
             border-radius: 4px;
             margin-top: 6px;
-            border: 1px solid #334155;
-            font-family: monospace;
+            border: 1px solid rgba(212, 175, 55, 0.35);
+            font-family: var(--font-mono);
         }
 
         .thinking-dropdown {
@@ -515,21 +723,23 @@ def index_page():
         }
 
         .thinking-content {
-            font-family: monospace;
+            font-family: var(--font-mono);
             white-space: pre-wrap;
             max-height: 100px;
             overflow-y: auto;
-            background: #0b1120;
+            background: #0E0305;
+            border: 1px solid var(--border-subtle);
             padding: 8px;
             border-radius: 6px;
             margin-top: 4px;
+            color: var(--text-secondary);
         }
 
         /* Input Controls */
         .chat-input-bar {
-            padding: 16px 20px;
-            background: #111a2e;
-            border-top: 1px solid var(--border-subtle);
+            padding: 14px 20px;
+            background: linear-gradient(180deg, #160507 0%, #100305 100%);
+            border-top: 1px solid var(--border-gold);
             display: flex;
             align-items: center;
             gap: 12px;
@@ -537,8 +747,8 @@ def index_page():
 
         .voice-btn {
             background: var(--surface-card);
-            border: 1px solid var(--border-subtle);
-            color: var(--text-primary);
+            border: 1px solid var(--uphsd-gold);
+            color: var(--uphsd-gold-bright);
             width: 44px;
             height: 44px;
             border-radius: 50%;
@@ -546,22 +756,25 @@ def index_page():
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            transition: all 0.2s;
-            font-size: 1.1rem;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 1.15rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
         }
 
         .voice-btn:hover {
             background: var(--surface-hover);
-            border-color: var(--border-focus);
+            transform: scale(1.05);
+            box-shadow: 0 0 12px var(--uphsd-gold-glow);
         }
 
         .voice-btn.listening {
-            background: #dc2626;
-            color: #ffffff;
-            animation: pulse 1.2s infinite;
+            background: #DC2626;
+            color: #FFFFFF;
+            border-color: #EF4444;
+            animation: pulseListening 1.2s infinite;
         }
 
-        @keyframes pulse {
+        @keyframes pulseListening {
             0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); }
             70% { box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); }
             100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
@@ -569,39 +782,45 @@ def index_page():
 
         .text-input {
             flex: 1;
-            background: var(--bg-body);
+            background: #0D0304;
             border: 1px solid var(--border-subtle);
             color: var(--text-primary);
             padding: 12px 16px;
             border-radius: 8px;
             font-size: 0.92rem;
+            font-family: var(--font-ui);
             outline: none;
-            transition: border-color 0.2s;
+            transition: border-color 0.2s, box-shadow 0.2s;
         }
 
         .text-input:focus {
-            border-color: var(--border-focus);
+            border-color: var(--uphsd-gold);
+            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
         }
 
         .send-btn {
-            background: linear-gradient(135deg, var(--accent-primary), #991b1b);
-            border: 1px solid var(--accent-gold);
-            color: #ffffff;
-            padding: 12px 20px;
+            background: linear-gradient(135deg, var(--uphsd-gold-bright) 0%, var(--uphsd-gold) 100%);
+            border: 1px solid var(--uphsd-gold-bright);
+            color: var(--uphsd-maroon-dark);
+            padding: 12px 22px;
             border-radius: 8px;
             font-size: 0.9rem;
-            font-weight: 600;
+            font-weight: 800;
+            letter-spacing: 0.02em;
             cursor: pointer;
             transition: all 0.2s;
+            box-shadow: 0 2px 8px rgba(212, 175, 55, 0.3);
         }
 
         .send-btn:hover {
-            filter: brightness(1.15);
+            filter: brightness(1.1);
+            transform: translateY(-1px);
         }
 
         /* Right Panel: Real-Time Order Cart */
         .right-panel {
-            background: #0f172a;
+            background: #0F0305;
+            border-left: 1px solid var(--border-subtle);
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -618,17 +837,19 @@ def index_page():
 
         .cart-card {
             background: var(--surface-card);
-            border: 1px solid var(--border-subtle);
+            border: 1px solid var(--border-gold);
             border-radius: 10px;
-            padding: 12px 14px;
+            padding: 14px;
             display: flex;
             flex-direction: column;
             gap: 8px;
-            transition: border-color 0.2s;
+            transition: border-color 0.2s, transform 0.15s;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
         }
 
         .cart-card:hover {
-            border-color: #3b82f6;
+            border-color: var(--uphsd-gold-bright);
+            transform: translateY(-1px);
         }
 
         .card-row-top {
@@ -638,26 +859,28 @@ def index_page():
         }
 
         .item-title {
-            font-weight: 600;
-            font-size: 0.92rem;
-            color: #f1f5f9;
+            font-weight: 700;
+            font-size: 0.94rem;
+            color: #FFFFFF;
         }
 
         .item-price {
-            font-weight: 700;
-            color: var(--accent-gold);
-            font-size: 0.92rem;
+            font-family: var(--font-heading);
+            font-weight: 800;
+            color: var(--uphsd-gold-bright);
+            font-size: 0.95rem;
         }
 
         .customization-badge {
-            background: #2e1065;
-            color: #d8b4fe;
-            border: 1px solid #7e22ce;
+            background: #3B0A0E;
+            color: var(--uphsd-gold-light);
+            border: 1px solid var(--border-gold);
             padding: 2px 8px;
             border-radius: 4px;
             font-size: 0.72rem;
             font-style: italic;
             display: inline-block;
+            margin-top: 3px;
         }
 
         .card-controls {
@@ -671,44 +894,54 @@ def index_page():
             display: flex;
             align-items: center;
             gap: 8px;
-            background: #0b1120;
+            background: #0E0305;
             padding: 4px 8px;
             border-radius: 6px;
-            border: 1px solid var(--border-subtle);
+            border: 1px solid var(--border-gold);
         }
 
         .qty-btn {
-            background: #1e293b;
-            color: #ffffff;
-            border: none;
-            width: 24px;
-            height: 24px;
+            background: var(--surface-card);
+            color: var(--uphsd-gold-bright);
+            border: 1px solid var(--border-subtle);
+            width: 26px;
+            height: 26px;
             border-radius: 4px;
             cursor: pointer;
             font-weight: bold;
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: all 0.15s;
         }
 
         .qty-btn:hover {
-            background: #334155;
+            background: var(--uphsd-maroon);
+            color: #FFFFFF;
+            border-color: var(--uphsd-gold);
         }
 
         .qty-label {
-            font-size: 0.85rem;
-            font-weight: 700;
-            min-width: 18px;
+            font-size: 0.88rem;
+            font-weight: 800;
+            min-width: 20px;
             text-align: center;
+            color: #FFFFFF;
         }
 
         .remove-btn {
             background: transparent;
             border: none;
-            color: #ef4444;
+            color: #EF4444;
             font-size: 0.75rem;
+            font-weight: 600;
             cursor: pointer;
             text-decoration: underline;
+            transition: color 0.15s;
+        }
+
+        .remove-btn:hover {
+            color: #F87171;
         }
 
         /* Cart Empty State */
@@ -721,8 +954,8 @@ def index_page():
 
         /* Bottom Bar: Checkout & FSM Control */
         .bottom-bar {
-            background: #111a2e;
-            border-top: 1px solid var(--border-subtle);
+            background: linear-gradient(180deg, #180608 0%, #100305 100%);
+            border-top: 1px solid var(--border-gold);
             padding: 16px 20px;
             display: flex;
             flex-direction: column;
@@ -732,7 +965,7 @@ def index_page():
         .cart-totals-breakdown {
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 5px;
             font-size: 0.85rem;
             color: var(--text-secondary);
         }
@@ -743,42 +976,47 @@ def index_page():
         }
 
         .grand-total-row {
-            font-size: 1.05rem;
-            font-weight: 800;
-            color: #ffffff;
-            border-top: 1px solid var(--border-subtle);
-            padding-top: 6px;
+            font-size: 1.15rem;
+            font-weight: 900;
+            color: #FFFFFF;
+            border-top: 1px solid var(--border-gold);
+            padding-top: 8px;
             margin-top: 4px;
         }
 
         .confirm-btn {
-            background: linear-gradient(135deg, #059669, #10b981);
-            color: #ffffff;
-            border: none;
+            background: linear-gradient(135deg, var(--uphsd-gold-bright) 0%, var(--uphsd-gold) 50%, var(--uphsd-gold-deep) 100%);
+            color: var(--uphsd-maroon-dark);
+            border: 1px solid var(--uphsd-gold-bright);
             padding: 14px;
             border-radius: 8px;
+            font-family: var(--font-heading);
             font-size: 1rem;
-            font-weight: 700;
+            font-weight: 900;
+            letter-spacing: 0.05em;
             cursor: pointer;
             width: 100%;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
-            transition: all 0.2s;
+            gap: 10px;
+            box-shadow: 0 4px 16px rgba(212, 175, 55, 0.4);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .confirm-btn:hover:not(:disabled) {
-            filter: brightness(1.15);
-            transform: translateY(-1px);
+            filter: brightness(1.12);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 22px rgba(212, 175, 55, 0.55);
         }
 
         .confirm-btn:disabled {
-            background: #334155;
-            color: #94a3b8;
+            background: #2A0D11;
+            color: #7A555A;
+            border-color: #3D141A;
             cursor: not-allowed;
             box-shadow: none;
+            transform: none;
         }
 
         /* Quick Action Pills */
@@ -786,17 +1024,23 @@ def index_page():
             display: flex;
             gap: 8px;
             padding: 8px 20px;
-            background: #0f172a;
+            background: #140406;
             border-top: 1px solid var(--border-subtle);
             overflow-x: auto;
+            scrollbar-width: none;
+        }
+
+        .quick-actions::-webkit-scrollbar {
+            display: none;
         }
 
         .quick-pill {
-            background: #1e293b;
+            background: var(--surface-card);
             border: 1px solid var(--border-subtle);
             color: var(--text-secondary);
             font-size: 0.75rem;
-            padding: 4px 12px;
+            font-weight: 500;
+            padding: 5px 14px;
             border-radius: 9999px;
             cursor: pointer;
             white-space: nowrap;
@@ -804,9 +1048,9 @@ def index_page():
         }
 
         .quick-pill:hover {
-            color: #ffffff;
-            border-color: #3b82f6;
-            background: #243452;
+            color: #FFFFFF;
+            border-color: var(--uphsd-gold);
+            background: var(--surface-hover);
         }
 
         /* Modal Overlay for Receipt */
@@ -816,8 +1060,8 @@ def index_page():
             left: 0;
             width: 100vw;
             height: 100vh;
-            background: rgba(0, 0, 0, 0.75);
-            backdrop-filter: blur(4px);
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(6px);
             display: none;
             align-items: center;
             justify-content: center;
@@ -825,32 +1069,48 @@ def index_page():
         }
 
         .receipt-card {
-            background: #ffffff;
-            color: #0f172a;
+            background: #FCFBF7;
+            color: #1A0507;
             width: 90%;
-            max-width: 480px;
+            max-width: 500px;
             border-radius: 12px;
+            border: 2px solid var(--uphsd-gold);
             padding: 24px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.8), 0 0 20px var(--uphsd-gold-glow);
             animation: modalPop 0.25s ease-out;
-            font-family: monospace;
+            font-family: var(--font-mono);
         }
 
         @keyframes modalPop {
-            from { transform: scale(0.9); opacity: 0; }
+            from { transform: scale(0.92); opacity: 0; }
             to { transform: scale(1); opacity: 1; }
+        }
+
+        .receipt-seal-watermark {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 8px;
         }
 
         .receipt-header {
             text-align: center;
-            border-bottom: 2px dashed #94a3b8;
+            border-bottom: 2px dashed #B8860B;
             padding-bottom: 12px;
             margin-bottom: 12px;
         }
 
         .receipt-header h2 {
-            font-size: 1.2rem;
-            font-weight: 800;
+            font-family: var(--font-heading);
+            font-size: 1.15rem;
+            font-weight: 900;
+            color: var(--uphsd-maroon);
+            letter-spacing: 0.04em;
+        }
+
+        .receipt-header p {
+            font-size: 0.78rem;
+            color: #4A070B;
+            font-weight: 600;
         }
 
         .receipt-lines {
@@ -867,41 +1127,132 @@ def index_page():
         }
 
         .receipt-footer {
-            border-top: 2px dashed #94a3b8;
+            border-top: 2px dashed #B8860B;
             padding-top: 12px;
             display: flex;
             flex-direction: column;
             gap: 6px;
         }
 
-        .modal-close-btn {
-            background: #0f172a;
-            color: #ffffff;
-            border: none;
+        .receipt-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .receipt-btn-action {
+            flex: 1;
             padding: 10px;
             border-radius: 6px;
-            font-weight: bold;
-            margin-top: 14px;
+            font-weight: 700;
+            font-size: 0.82rem;
+            cursor: pointer;
+            border: none;
+            transition: all 0.15s;
+        }
+
+        .btn-print {
+            background: var(--uphsd-maroon);
+            color: #FFFFFF;
+            border: 1px solid var(--uphsd-maroon-dark);
+        }
+
+        .btn-print:hover {
+            background: var(--uphsd-maroon-light);
+        }
+
+        .btn-download {
+            background: #E2D4CF;
+            color: #380508;
+            border: 1px solid #B8860B;
+        }
+
+        .btn-download:hover {
+            background: #D4AF37;
+            color: #FFFFFF;
+        }
+
+        .modal-close-btn {
+            background: linear-gradient(135deg, var(--uphsd-maroon) 0%, #42070A 100%);
+            color: #FFFFFF;
+            border: 1px solid var(--uphsd-gold);
+            padding: 12px;
+            border-radius: 6px;
+            font-family: var(--font-heading);
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            margin-top: 10px;
             cursor: pointer;
             width: 100%;
+            transition: filter 0.2s;
+        }
+
+        .modal-close-btn:hover {
+            filter: brightness(1.15);
+        }
+
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #receiptModal, #receiptModal * {
+                visibility: visible;
+            }
+            #receiptModal {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                background: white;
+            }
+            .receipt-actions, .modal-close-btn {
+                display: none !important;
+            }
         }
     </style>
 </head>
 <body>
 
-    <!-- Header -->
+    <!-- Top Institutional Motto Ribbon -->
+    <div class="uphsd-top-ribbon">
+        <div class="ribbon-left">
+            <span class="ribbon-motto">★ Character Building is Nation Building</span>
+            <span class="ribbon-campus">Las Piñas Campus • College of Computer Studies</span>
+        </div>
+        <div class="ribbon-right">
+            <span class="ribbon-badge">Perpetual Bistro Kiosk v2.5 • AI Autonomous Dining</span>
+        </div>
+    </div>
+
+    <!-- Official Institutional Header -->
     <header>
         <div class="brand-container">
-            <div class="brand-logo">🍽️</div>
+            <!-- Authentic University of Perpetual Help Cameo Seal SVG -->
+            <svg class="brand-seal" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="50" cy="50" r="48" fill="#4A070B" stroke="#D4AF37" stroke-width="3"/>
+                <circle cx="50" cy="50" r="42" fill="#6B0F1A" stroke="#F5B041" stroke-width="1.5" stroke-dasharray="3 2"/>
+                <!-- Golden Laurel Leaves -->
+                <path d="M25 65 C20 50, 23 35, 34 24 C29 35, 31 48, 38 56 Z" fill="#D4AF37" opacity="0.95"/>
+                <path d="M75 65 C80 50, 77 35, 66 24 C71 35, 69 48, 62 56 Z" fill="#D4AF37" opacity="0.95"/>
+                <!-- Central Maroon Cameo Shield -->
+                <path d="M34 32 L66 32 C66 54, 50 70, 50 74 C50 70, 34 54, 34 32 Z" fill="#7B1113" stroke="#D4AF37" stroke-width="2"/>
+                <!-- Torch & Cross of Learning -->
+                <path d="M50 36 L50 62 M42 45 L58 45" stroke="#F5B041" stroke-width="2.5" stroke-linecap="round"/>
+                <polygon points="50,29 53,35 47,35" fill="#FFD700"/>
+                <!-- Star of Excellence -->
+                <polygon points="50,16 52,21 57,21 53,24 55,29 50,26 45,29 47,24 43,21 48,21" fill="#F5B041"/>
+            </svg>
             <div class="brand-title">
+                <div class="university-name">University of Perpetual Help System DALTA</div>
                 <h1>PERPETUAL BISTRO</h1>
-                <p>Digital Table-Side Ordering System & Conversational Agent</p>
+                <p>Campus Dining Table-Side Tablet & Autonomous Waiter</p>
             </div>
         </div>
         <div class="header-meta">
             <div class="meta-pill">📍 Table #<span id="headerTableNo">1</span></div>
-            <div class="meta-pill">🔑 Session: <span id="headerSessionId" style="font-family: monospace;">---</span></div>
+            <div class="meta-pill">🔑 Session: <span id="headerSessionId" style="font-family: var(--font-mono);">---</span></div>
             <div class="meta-pill">🤖 Qwen 3.5 (4B) Local</div>
+            
             <!-- McDonald's Kiosk Language Selector -->
             <div class="lang-selector-group" role="radiogroup" aria-label="Select Kiosk Language">
                 <button id="langFilipinoBtn" class="lang-btn active" onclick="setKioskLanguage('filipino')" title="Filipino (Taglish) Mode with Rosa">
@@ -911,8 +1262,20 @@ def index_page():
                     <span class="lang-flag">🇺🇸</span> English
                 </button>
             </div>
-            <button id="ttsToggleBtn" class="meta-pill" style="cursor: pointer; background: var(--surface-card); color: var(--accent-gold); border: 1px solid var(--border-subtle);" onclick="toggleTtsAudio()">🔊 Voice Audio: ON</button>
-            <button id="haltSpeechBtn" class="meta-pill" style="cursor: pointer; background: #dc2626; color: #ffffff; font-weight: bold; border: 1px solid #ef4444; display: none;" onclick="haltSpeech()">⏹️ HALT VOICE (Esc)</button>
+
+            <!-- Voice Controls & Audio Visualizer -->
+            <div class="meta-pill" style="gap: 8px;">
+                <button id="ttsToggleBtn" style="cursor: pointer; background: transparent; border: none; color: var(--uphsd-gold-bright); font-weight: 700;" onclick="toggleTtsAudio()">🔊 Voice Audio: ON</button>
+                <div class="audio-wave-container" id="audioWaveform" title="Speech Audio Activity">
+                    <span class="wave-bar"></span>
+                    <span class="wave-bar"></span>
+                    <span class="wave-bar"></span>
+                    <span class="wave-bar"></span>
+                    <span class="wave-bar"></span>
+                </div>
+            </div>
+
+            <button id="haltSpeechBtn" class="meta-pill" style="cursor: pointer; background: #DC2626; color: #FFFFFF; font-weight: bold; border: 1px solid #EF4444; display: none;" onclick="haltSpeech()">⏹️ HALT VOICE (Esc)</button>
             <span id="fsmStateBadge" class="state-badge state-GREETING">STATE_GREETING</span>
         </div>
     </header>
@@ -929,12 +1292,21 @@ def index_page():
                 <div class="panel-title">
                     <span>💬 Table Dialogue Stream</span>
                 </div>
-                <div style="font-size: 0.75rem; color: var(--text-muted);" id="audioNotice">
-                    Natural AI • Zero-Cloud • SQLite Bound
+                <div style="font-size: 0.75rem; color: var(--uphsd-gold-light);" id="audioNotice">
+                    Natural AI • Taglish (Rosa) • SQLite Bound
                 </div>
             </div>
 
-            <div id="micAlertBanner" style="display: none; background: #7f1d1d; color: #fecaca; padding: 8px 16px; font-size: 0.8rem; border-bottom: 1px solid #dc2626;">
+            <!-- Interactive Menu Category Quick-Filter Tabs -->
+            <div class="category-tabs-bar" id="categoryTabs">
+                <button class="cat-pill active" onclick="filterMenuCategory('all')">🌟 All Bistro Specials</button>
+                <button class="cat-pill" onclick="filterMenuCategory('Mains')">🍲 Mains</button>
+                <button class="cat-pill" onclick="filterMenuCategory('Sides')">🍟 Sides</button>
+                <button class="cat-pill" onclick="filterMenuCategory('Drinks')">🥤 Beverages</button>
+                <button class="cat-pill" onclick="filterMenuCategory('Dessert')">🍨 Desserts</button>
+            </div>
+
+            <div id="micAlertBanner" style="display: none; background: #7F1D1D; color: #FECACA; padding: 8px 16px; font-size: 0.8rem; border-bottom: 1px solid #DC2626;">
                 ⚠️ <strong>Microphone Notice:</strong> Browser speech recognition was blocked or unavailable. Please click the lock/settings icon in your address bar to allow microphone permissions, or type directly in the input box.
             </div>
 
@@ -969,16 +1341,16 @@ def index_page():
                 <div class="panel-title">
                     <span>🛒 Active Order Tab</span>
                 </div>
-                <div style="font-size: 0.75rem; color: var(--accent-gold);" id="cartItemCount">
+                <div style="font-size: 0.78rem; font-weight: 700; color: var(--uphsd-gold-bright);" id="cartItemCount">
                     0 Items
                 </div>
             </div>
 
             <div id="cartItemsContainer" class="cart-items-container">
                 <div class="empty-cart-state">
-                    <p style="font-size: 2rem; margin-bottom: 8px;">🍽️</p>
-                    <p>Your tab is currently empty.</p>
-                    <p style="font-size: 0.8rem; margin-top: 4px;">Ask BistroBot to add items or recommendations.</p>
+                    <p style="font-size: 2.2rem; margin-bottom: 8px;">🍽️</p>
+                    <p style="font-weight: 600; color: var(--text-secondary);">Your table tab is currently empty.</p>
+                    <p style="font-size: 0.8rem; margin-top: 4px; color: var(--text-muted);">Ask BistroBot to recommend specials or add items.</p>
                 </div>
             </div>
 
@@ -987,7 +1359,7 @@ def index_page():
                 <div class="cart-totals-breakdown">
                     <div class="totals-row">
                         <span>Subtotal:</span>
-                        <span id="cartSubtotal">₱0.00</span>
+                        <span id="cartSubtotal" style="font-weight: 600;">₱0.00</span>
                     </div>
                     <div class="totals-row">
                         <span>12% Government VAT (Included):</span>
@@ -995,7 +1367,7 @@ def index_page():
                     </div>
                     <div class="totals-row grand-total-row">
                         <span>TOTAL AMOUNT:</span>
-                        <span id="cartGrandTotal" style="color: var(--accent-green);">₱0.00</span>
+                        <span id="cartGrandTotal" style="color: var(--uphsd-gold-bright);">₱0.00</span>
                     </div>
                 </div>
 
@@ -1009,14 +1381,23 @@ def index_page():
 
     </div>
 
-    <!-- Digital Receipt Modal -->
+    <!-- Official University of Perpetual Help Digital Receipt Modal -->
     <div id="receiptModal" class="modal-overlay">
         <div class="receipt-card">
+            <div class="receipt-seal-watermark">
+                <svg width="42" height="42" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="50" cy="50" r="48" fill="#4A070B" stroke="#D4AF37" stroke-width="3"/>
+                    <path d="M34 32 L66 32 C66 54, 50 70, 50 74 C50 70, 34 54, 34 32 Z" fill="#7B1113" stroke="#D4AF37" stroke-width="2"/>
+                    <path d="M50 36 L50 62 M42 45 L58 45" stroke="#F5B041" stroke-width="2.5" stroke-linecap="round"/>
+                </svg>
+            </div>
             <div class="receipt-header">
-                <h2>UNIVERSITY OF PERPETUAL HELP</h2>
-                <p>PERPETUAL BISTRO — CAMPUS DINING</p>
-                <p style="margin-top: 4px; font-size: 0.75rem;" id="receiptIdText">RECEIPT #PB-1-XXXXXX</p>
-                <p style="font-size: 0.75rem;" id="receiptDateText"></p>
+                <h2>UNIVERSITY OF PERPETUAL HELP SYSTEM DALTA</h2>
+                <p>PERPETUAL BISTRO — CAMPUS DINING FACILITY</p>
+                <p style="font-size: 0.72rem; color: #555; margin-top: 2px;">Las Piñas Campus • Alabang-Zapote Rd, Pamplona 3</p>
+                <p style="font-size: 0.72rem; font-style: italic; color: #7B1113; margin-top: 3px;">"Character Building is Nation Building"</p>
+                <p style="margin-top: 8px; font-size: 0.76rem; font-weight: 800; color: #1A0507;" id="receiptIdText">OFFICIAL RECEIPT #PB-1-XXXXXX</p>
+                <p style="font-size: 0.72rem; color: #666;" id="receiptDateText"></p>
             </div>
 
             <div id="receiptItemsList" class="receipt-lines">
@@ -1026,21 +1407,26 @@ def index_page():
             <div class="receipt-footer">
                 <div class="receipt-line-item">
                     <span>Subtotal:</span>
-                    <span id="receiptSubtotal">₱0.00</span>
+                    <span id="receiptSubtotal" style="font-weight: 600;">₱0.00</span>
                 </div>
                 <div class="receipt-line-item">
                     <span>12% VAT Breakdown:</span>
                     <span id="receiptVat">₱0.00</span>
                 </div>
-                <div class="receipt-line-item" style="font-weight: 800; font-size: 1.05rem; border-top: 1px solid #0f172a; padding-top: 4px;">
+                <div class="receipt-line-item" style="font-weight: 900; font-size: 1.15rem; color: #7B1113; border-top: 2px solid #7B1113; padding-top: 6px;">
                     <span>TOTAL BILLED:</span>
                     <span id="receiptTotal">₱0.00</span>
                 </div>
             </div>
 
-            <div style="text-align: center; margin-top: 12px; font-size: 0.75rem; color: #475569;">
+            <div style="text-align: center; margin-top: 10px; font-size: 0.74rem; color: #475569;">
                 Status: Verified & Committed to restaurant.db<br>
-                Kitchen ticket dispatched. Thank you!
+                Kitchen ticket dispatched. Maraming salamat po!
+            </div>
+
+            <div class="receipt-actions">
+                <button class="receipt-btn-action btn-print" onclick="window.print()">🖨️ Print Receipt</button>
+                <button class="receipt-btn-action btn-download" onclick="downloadReceiptTxt()">📥 Download (TXT)</button>
             </div>
 
             <button class="modal-close-btn" onclick="closeReceiptModal()">Start New Table Session</button>
@@ -1053,6 +1439,7 @@ def index_page():
         let recognition = null;
         let ttsAudioEnabled = true;
         let currentLanguage = 'filipino';
+        let currentReceiptData = null;
 
         async function setKioskLanguage(lang, announce = true) {
             currentLanguage = lang.toLowerCase().trim();
@@ -1165,16 +1552,19 @@ def index_page():
                 isListening = !isListening;
             }
 
+            const waveform = document.getElementById('audioWaveform');
             if (isListening) {
                 btn.classList.add('listening');
+                if (waveform) waveform.classList.add('speaking');
                 btn.title = "Listening to speech (Click to cancel)...";
                 if (statusEl) {
                     statusEl.innerText = '🔴 Listening...';
-                    statusEl.style.color = '#ef4444';
+                    statusEl.style.color = '#EF4444';
                 }
                 try { recognition.start(); } catch(e){}
             } else {
                 btn.classList.remove('listening');
+                if (waveform) waveform.classList.remove('speaking');
                 btn.title = "Click to Speak into Microphone";
                 if (statusEl) {
                     statusEl.innerText = '🎙️ Mic: Ready';
@@ -1190,12 +1580,10 @@ def index_page():
             if (!ttsAudioEnabled) {
                 haltSpeech();
                 btn.innerText = "🔇 Voice Audio: MUTED";
-                btn.style.color = "#94a3b8";
-                btn.style.borderColor = "#475569";
+                btn.style.color = "#9E8083";
             } else {
                 btn.innerText = "🔊 Voice Audio: ON";
-                btn.style.color = "var(--accent-gold)";
-                btn.style.borderColor = "var(--border-subtle)";
+                btn.style.color = "var(--uphsd-gold-bright)";
             }
         }
 
@@ -1212,6 +1600,10 @@ def index_page():
             if (haltBtn) {
                 haltBtn.style.display = 'none';
             }
+            const waveform = document.getElementById('audioWaveform');
+            if (waveform) {
+                waveform.classList.remove('speaking');
+            }
         }
 
         async function speakText(text) {
@@ -1220,6 +1612,8 @@ def index_page():
 
             const haltBtn = document.getElementById('haltSpeechBtn');
             if (haltBtn) haltBtn.style.display = 'inline-block';
+            const waveform = document.getElementById('audioWaveform');
+            if (waveform) waveform.classList.add('speaking');
 
             const selectedVoice = (currentLanguage === 'english') ? 'en-US-JennyNeural' : 'en-PH-RosaNeural';
 
@@ -1237,13 +1631,20 @@ def index_page():
                 const blob = await res.blob();
                 if (blob.size === 0) {
                     if (haltBtn) haltBtn.style.display = 'none';
+                    if (waveform) waveform.classList.remove('speaking');
                     return;
                 }
                 const audioUrl = URL.createObjectURL(blob);
                 const player = document.getElementById('bistroAudioPlayer');
                 player.src = audioUrl;
-                player.onended = () => { if (haltBtn) haltBtn.style.display = 'none'; };
-                player.onerror = () => { if (haltBtn) haltBtn.style.display = 'none'; };
+                player.onended = () => { 
+                    if (haltBtn) haltBtn.style.display = 'none'; 
+                    if (waveform) waveform.classList.remove('speaking');
+                };
+                player.onerror = () => { 
+                    if (haltBtn) haltBtn.style.display = 'none'; 
+                    if (waveform) waveform.classList.remove('speaking');
+                };
                 await player.play();
             } catch (err) {
                 console.warn("Natural neural voice playback failed, falling back to local speech synthesis:", err);
@@ -1462,7 +1863,8 @@ def index_page():
         }
 
         function showReceipt(rc) {
-            document.getElementById('receiptIdText').innerText = `RECEIPT #${rc.receipt_id}`;
+            currentReceiptData = rc;
+            document.getElementById('receiptIdText').innerText = `OFFICIAL RECEIPT #${rc.receipt_id}`;
             document.getElementById('receiptDateText').innerText = new Date().toLocaleString();
             document.getElementById('receiptSubtotal').innerText = `₱${(rc.subtotal || 0).toFixed(2)}`;
             document.getElementById('receiptVat').innerText = `₱${(rc.vat_included || 0).toFixed(2)}`;
@@ -1472,11 +1874,63 @@ def index_page():
             linesContainer.innerHTML = (rc.itemized_receipt || []).map(it => `
                 <div class="receipt-line-item">
                     <span>${it.quantity}x ${it.name} ${it.special_instructions ? `(${it.special_instructions})` : ''}</span>
-                    <span>₱${(it.line_total).toFixed(2)}</span>
+                    <span style="font-weight: 700;">₱${(it.line_total).toFixed(2)}</span>
                 </div>
             `).join('');
 
             document.getElementById('receiptModal').style.display = 'flex';
+        }
+
+        function downloadReceiptTxt() {
+            if (!currentReceiptData) return;
+            const rc = currentReceiptData;
+            let text = "========================================================\n";
+            text += "    UNIVERSITY OF PERPETUAL HELP SYSTEM DALTA\n";
+            text += "           PERPETUAL BISTRO CAMPUS DINING\n";
+            text += "   Las Piñas Campus • Alabang-Zapote Rd, Pamplona 3\n";
+            text += "      Motto: Character Building is Nation Building\n";
+            text += "========================================================\n\n";
+            text += `OFFICIAL RECEIPT: #${rc.receipt_id}\n`;
+            text += `TABLE NUMBER:     Table #${currentTableNo}\n`;
+            text += `DATE & TIME:      ${new Date().toLocaleString()}\n`;
+            text += `STATUS:           Verified & Committed to restaurant.db\n`;
+            text += "--------------------------------------------------------\n";
+            text += "QTY  ITEM DESCRIPTION                     AMOUNT\n";
+            text += "--------------------------------------------------------\n";
+            (rc.itemized_receipt || []).forEach(it => {
+                const itemDesc = (it.name + (it.special_instructions ? ` (${it.special_instructions})` : '')).padEnd(36, ' ').slice(0, 36);
+                const price = `PHP ${(it.line_total || 0).toFixed(2)}`.padStart(12, ' ');
+                text += `${String(it.quantity).padEnd(4, ' ')} ${itemDesc} ${price}\n`;
+            });
+            text += "--------------------------------------------------------\n";
+            text += `SUBTOTAL:                           PHP ${(rc.subtotal || 0).toFixed(2)}\n`;
+            text += `12% VAT BREAKDOWN (INCLUDED):       PHP ${(rc.vat_included || 0).toFixed(2)}\n`;
+            text += `TOTAL BILLED:                       PHP ${(rc.grand_total || 0).toFixed(2)}\n`;
+            text += "========================================================\n";
+            text += "   Thank you for dining at Perpetual Bistro! Mabuhay!\n";
+            text += "========================================================\n";
+
+            const blob = new Blob([text], {type: 'text/plain;charset=utf-8'});
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `UPHSD_Bistro_Receipt_${rc.receipt_id}.txt`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function filterMenuCategory(category) {
+            const tabs = document.querySelectorAll('.category-tabs-bar .cat-pill');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            if (window.event && window.event.target) {
+                window.event.target.classList.add('active');
+            }
+
+            if (category === 'all') {
+                sendQuickPrompt(currentLanguage === 'english' ? 'What are all the specials available today at Perpetual Bistro?' : 'Ano-ano po ang lahat ng available bistro specials today?');
+            } else {
+                sendQuickPrompt(currentLanguage === 'english' ? `Can you show me what you have under ${category}?` : `Ano-ano po ang mga available na ${category}?`);
+            }
         }
 
         async function closeReceiptModal() {
@@ -1520,10 +1974,10 @@ def index_page():
             fetchSession();
             appendMessage(
                 'BistroBot',
-                'Mabuhay! Welcome to Table 1 at Perpetual Bistro! I am your table-side digital waiter powered by Qwen 3.5. You can ask for our menu recommendations, check allergens, or place an order po!',
+                'Mabuhay! Welcome to Table 1 at Perpetual Bistro — University of Perpetual Help System DALTA! I am your table-side digital waiter powered by Qwen 3.5. You can ask for our menu recommendations, check allergens, or place an order po!',
                 null,
                 null,
-                'Mabuhigh! Welcome to Table 1 at Perpetual Bistro! I am your table-side digital waiter powered by Qwen 3.5. You can ask for our menu recommendations, check allergens, or place an order poh!'
+                'Mabuhigh! Welcome to Table 1 at Perpetual Bistro — University of Perpetual Help System DALTA! I am your table-side digital waiter powered by Qwen 3.5. You can ask for our menu recommendations, check allergens, or place an order poh!'
             );
         };
     </script>
