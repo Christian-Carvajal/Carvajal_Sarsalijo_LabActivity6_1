@@ -684,7 +684,7 @@
         }
 
         /* =====================================================================
-           EXECUTIVE CHEF EZEKIEL SPOTLIGHT STYLES
+           EXECUTIVE CULINARY BRIGADE SPOTLIGHT STYLES
            ===================================================================== */
         .landing-hero-stats {
             display: flex;
@@ -755,13 +755,13 @@
 
         .chef-spotlight-inner {
             display: grid;
-            grid-template-columns: 360px 1fr;
+            grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
             align-items: center;
             position: relative;
             z-index: 2;
         }
 
-        @media (max-width: 960px) {
+        @media (max-width: 992px) {
             .chef-spotlight-inner {
                 grid-template-columns: 1fr;
             }
@@ -769,72 +769,81 @@
 
         .chef-photo-container {
             position: relative;
+            width: 100%;
             height: 100%;
-            min-height: 400px;
-            background: #0D0203;
+            min-height: 380px;
+            aspect-ratio: 1535 / 1024;
+            background: radial-gradient(circle at center, #260508 0%, #0D0203 100%);
             overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .chef-photo-img {
             width: 100%;
             height: 100%;
-            object-fit: cover;
-            object-position: top center;
+            object-fit: contain;
+            object-position: center center;
             display: block;
-            transition: transform 0.6s ease;
+            transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         .bento-chef-spotlight:hover .chef-photo-img {
-            transform: scale(1.05);
+            transform: scale(1.03);
         }
 
         .chef-photo-badge {
             position: absolute;
-            bottom: 16px;
-            left: 16px;
-            right: 16px;
-            background: rgba(18, 3, 5, 0.88);
+            bottom: 12px;
+            left: 12px;
+            background: rgba(18, 3, 5, 0.92);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(212, 175, 55, 0.4);
+            border: 1px solid rgba(212, 175, 55, 0.45);
             border-radius: var(--radius-md);
-            padding: 10px 14px;
+            padding: 8px 14px;
             color: #FFFFFF;
-            display: flex;
+            display: inline-flex;
             align-items: center;
-            gap: 12px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+            gap: 10px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.55);
+            max-width: calc(100% - 24px);
+            z-index: 3;
         }
 
         .chef-photo-badge-icon {
-            font-size: 24px;
+            font-size: 22px;
+            flex-shrink: 0;
         }
 
         .chef-photo-badge-name {
             font-weight: 800;
-            font-size: 13px;
+            font-size: 12px;
             color: #FFFFFF;
             letter-spacing: 0.5px;
+            white-space: nowrap;
         }
 
         .chef-photo-badge-role {
             font-size: 11px;
             color: var(--uphsd-gold);
             font-weight: 700;
+            white-space: nowrap;
         }
 
         .chef-content-area {
-            padding: 36px 40px;
+            padding: 30px 36px;
             color: #FFFFFF;
         }
 
-        @media (max-width: 960px) {
+        @media (max-width: 992px) {
             .chef-content-area {
                 padding: 24px 20px 32px 20px;
             }
             .chef-photo-container {
-                min-height: 320px;
-                max-height: 400px;
+                min-height: auto;
+                aspect-ratio: 1535 / 1024;
             }
         }
 
@@ -2914,7 +2923,7 @@
                 <div class="landing-subtitle">UNIVERSITY OF PERPETUAL HELP SYSTEM DALTA</div>
                 <h2 class="landing-title">PERPETUAL BISTRO DINING & SMART KIOSK</h2>
                 <p class="landing-desc">
-                    Experience handcrafted gourmet dining curated by Executive Chef Ezekiel Carvajal, featuring intelligent conversational AI assistance, automated stock verification, and instant kitchen ticket dispatch.
+                    Experience handcrafted gourmet dining curated by our Executive Culinary Brigade, featuring intelligent conversational AI assistance, automated stock verification, and instant kitchen ticket dispatch.
                 </p>
 
                 <!-- Hero Call to Action Buttons -->
@@ -2926,7 +2935,7 @@
                         <span>🤖</span> Chat with BistroBot Waiter
                     </button>
                     <button class="btn-hero-secondary" onclick="document.querySelector('.bento-chef-spotlight').scrollIntoView({behavior: 'smooth'})">
-                        <span>👨‍🍳</span> Meet Chef Ezekiel
+                        <span>👨‍🍳</span> Meet The Culinary Brigade
                     </button>
                 </div>
 
@@ -2935,8 +2944,8 @@
                     <div class="hero-stat-item">
                         <span class="hero-stat-icon">👨‍🍳</span>
                         <div class="hero-stat-text">
-                            <strong>Chef Ezekiel Carvajal</strong>
-                            <span>Head of Culinary Arts</span>
+                            <strong>Executive Culinary Brigade</strong>
+                            <span>Master Kitchen Directors</span>
                         </div>
                     </div>
                     <div class="hero-stat-item">
@@ -2967,36 +2976,36 @@
             <div class="bento-grid">
 
                 <!-- =============================================================
-                     FEATURE 1: EXECUTIVE CHEF EZEKIEL SPOTLIGHT HERO CARD
+                     FEATURE 1: EXECUTIVE CULINARY BRIGADE SPOTLIGHT HERO CARD
                      ============================================================= -->
                 <div class="bento-card bento-chef-spotlight" onclick="filterCategory('all'); switchView('kiosk');">
                     <div class="chef-spotlight-inner">
                         <div class="chef-photo-container">
-                            <img src="/static/chef_ezekiel.jpg" alt="Executive Chef Ezekiel Carvajal" class="chef-photo-img" onerror="this.src='https://images.unsplash.com/photo-1577219491135-ce391730fb2c?w=800'">
+                            <img src="/static/chef_ezekiel.jpg" alt="Executive Culinary Brigade • Perpetual Bistro" class="chef-photo-img" onerror="this.src='https://images.unsplash.com/photo-1577219491135-ce391730fb2c?w=800'">
                             <div class="chef-photo-badge">
                                 <span class="chef-photo-badge-icon">👨‍🍳</span>
                                 <div>
-                                    <div class="chef-photo-badge-name">Chef Ezekiel Carvajal</div>
-                                    <div class="chef-photo-badge-role">Head of Culinary • Perpetual Bistro</div>
+                                    <div class="chef-photo-badge-name">Executive Culinary Brigade</div>
+                                    <div class="chef-photo-badge-role">Master Chefs &amp; Culinary Directors • Perpetual Bistro</div>
                                 </div>
                             </div>
                         </div>
                         <div class="chef-content-area">
-                            <span class="chef-super-tag">⭐ MEET OUR EXECUTIVE CHEF</span>
-                            <h3 class="chef-title-name">Executive Chef <span>Ezekiel Carvajal</span></h3>
+                            <span class="chef-super-tag">⭐ MEET OUR EXECUTIVE CULINARY TEAM</span>
+                            <h3 class="chef-title-name">The Executive <span>Culinary Brigade</span></h3>
                             <div class="chef-role-sub">Mastering Artisanal Campus Bistro Flavors</div>
                             <div class="chef-quote-box">
-                                "At Perpetual Bistro, culinary excellence meets cutting-edge technology. We unite fresh local farm produce with classical bistro mastery to bring every Perpetualite hearty, handcrafted meals cooked straight to perfection."
+                                "At Perpetual Bistro, culinary excellence meets cutting-edge technology. Our culinary brigade unites fresh local farm produce with classical bistro mastery to bring every Perpetualite hearty, handcrafted meals cooked straight to perfection."
                             </div>
                             <div class="chef-accolades-row">
-                                <span class="chef-pill-badge">🎖️ Head of Kitchen Operations</span>
+                                <span class="chef-pill-badge">🎖️ Executive Kitchen Brigade</span>
                                 <span class="chef-pill-badge">🍳 100% Cooked-to-Order</span>
                                 <span class="chef-pill-badge">🌱 Farm-Fresh Daily Supply</span>
                                 <span class="chef-pill-badge">❤️ Crafted for Perpetualites</span>
                             </div>
                             <div class="chef-cta-actions">
                                 <button class="btn-chef-action" onclick="event.stopPropagation(); filterCategory('Burgers'); switchView('kiosk');">
-                                    Taste Chef's Specialties →
+                                    Taste Our Chefs' Specialties →
                                 </button>
                                 <button class="btn-chef-secondary" onclick="event.stopPropagation(); switchView('chat');">
                                     Ask BistroBot About Chef Recommendations 💬
@@ -3718,6 +3727,7 @@
             "Classic New York Cheesecake": "https://images.unsplash.com/photo-1533134242443-d4fd215305ad?w=600&auto=format&fit=crop&q=80",
             "Perpetual Champion Combo": "https://images.unsplash.com/photo-1550547660-d9450f859349?w=600&auto=format&fit=crop&q=80",
             "Pasta & Sweet Treat Combo": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&auto=format&fit=crop&q=80",
+            "Executive Chefs' Special Duo": "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&auto=format&fit=crop&q=80",
             "Chef Ezekiel's Special Duo": "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&auto=format&fit=crop&q=80",
             "Late Night Study Fuel Combo": "https://images.unsplash.com/photo-1576107232684-1279f3908594?w=600&auto=format&fit=crop&q=80"
         };
