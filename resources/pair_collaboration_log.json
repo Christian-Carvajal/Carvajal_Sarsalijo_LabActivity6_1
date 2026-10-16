@@ -118,6 +118,28 @@
         "Audited browser audio decoding and base64 transmission latency",
         "Tested Web Speech microphone input across varied accents"
       ]
+    },
+    {
+      "milestone_id": "M5",
+      "title": "Ultra-Aesthetic Kiosk Overhaul & Multi-View Navigation Architecture",
+      "driver": "John Miko P. Sarsalijo",
+      "navigator": "Christian Ezekiel L. Carvajal",
+      "target_modules": [
+        "web_dashboard.py",
+        "SarsalijoProjectChanges.md"
+      ],
+      "driver_tasks": [
+        "Architected 3-mode Kiosk Navigation Switcher (Visual Menu, AI Waiter, Split View)",
+        "Built responsive Visual Menu Catalog with food cards, allergen pills, stock chips, and quick add buttons",
+        "Engineered Interactive Dish Customization Modal with option checkboxes and kitchen notes",
+        "Implemented real-time search bar and multi-tag dietary filters (Dairy-Free, Gluten-Free, Nut-Free, In-Stock)",
+        "Added interactive Table Selector Dropdown (Table 1 to Table 8) and floating toast notification engine"
+      ],
+      "navigator_reviews": [
+        "Verified /api/cart/add atomic integration with SQLite and FSM state progression",
+        "Tested responsive rendering on tablet viewports confirming zero horizontal overflow",
+        "Validated UPHSD Maroon and Academic Gold visual harmony and contrast compliance"
+      ]
     }
   ],
   "verification_status": {
@@ -127,3 +149,4 @@
     "rubric_compliance_pct": 100
   }
 }
+

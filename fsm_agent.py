@@ -14,7 +14,28 @@ from typing import Dict, Any, List, Optional, Tuple
 import db_tools
 
 OLLAMA_API_URL = os.environ.get("OLLAMA_API_URL", "http://127.0.0.1:11434/api/chat")
-DEFAULT_MODEL = os.environ.get("OLLAMA_MODEL", "qwen3.5:4b")
+
+def select_best_model() -> str:
+    """Dynamically detects best available model without exceeding laptop VRAM limits."""
+    if "OLLAMA_MODEL" in os.environ:
+        return os.environ["OLLAMA_MODEL"]
+    try:
+        req = urllib.request.Request("http://127.0.0.1:11434/api/tags")
+        with urllib.request.urlopen(req, timeout=2) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            installed = [m.get("name", "") for m in data.get("models", [])]
+            # Prioritize qwen2.5:1.5b to prevent cudaMalloc OOM on 4GB/6GB laptop GPUs
+            for cand in ["qwen2.5:1.5b", "qwen3.5:4b", "jarvis-trained-model:latest"]:
+                for m in installed:
+                    if cand in m:
+                        return m
+            if installed:
+                return installed[0]
+    except Exception:
+        pass
+    return "qwen2.5:1.5b"
+
+DEFAULT_MODEL = select_best_model()
 
 # 5 Discrete FSM States
 STATE_GREETING = "STATE_GREETING"

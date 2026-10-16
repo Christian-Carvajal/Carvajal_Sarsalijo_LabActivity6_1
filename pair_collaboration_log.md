@@ -86,6 +86,24 @@ Following the Extreme Programming (XP) pair programming paradigm covered in Less
 
 ---
 
+### Milestone 5: Ultra-Aesthetic Kiosk Overhaul & Multi-View Navigation Architecture
+* **Driver:** John Miko P. Sarsalijo
+* **Navigator:** Christian Ezekiel L. Carvajal
+* **Focus Modules:** Visual menu catalog, 3-mode navigation switcher, interactive dish customization modal, real-time search, allergen badges, table switcher, and toast notification architecture in `web_dashboard.py`.
+* **Tactical Output (Sarsalijo):**
+  - Designed and deployed the 3-mode Kiosk Navigation Switcher (`🍽️ Visual Menu Catalog`, `💬 AI Waiter Dialogue`, `⚡ Split Kiosk View`).
+  - Engineered the real-time Visual Menu Grid rendering all 17 dishes with color-coded allergen pills, stock status chips, and direct `+ Quick Add` buttons.
+  - Implemented the Interactive Dish Customization Modal allowing customers to select popular modifications (`No Onions`, `Extra Cheese`, `Make it Spicy`, `Less Ice`, `Extra Garlic Rice`) and custom dietary requests before adding to cart.
+  - Created live search and multi-tag dietary filter system (`Dairy-Free`, `Gluten-Free`, `Nut-Free`, `In-Stock Only`).
+  - Added table selection dropdown allowing switching between Table #1 and Table #8 on the fly.
+  - Built interactive floating toast feedback system for instant visual confirmation.
+* **Navigator Review & Feedback (Carvajal):**
+  - Verified that adding items from visual menu cards properly invokes `add_item_to_order`, updating SQLite and triggering the FSM transition to `STATE_TAKING_ORDER`.
+  - Tested responsive rendering across tablet and desktop viewports, confirming zero horizontal overflow.
+  - Audited contrast ratios and verified alignment with official UPHSD Maroon & Gold brand guidelines.
+
+---
+
 ## 3. Key Design Decisions & Problem Resolution
 
 | Challenge | Root Cause | Engineering Solution Implemented | Lead Investigator |
@@ -96,6 +114,7 @@ Following the Extreme Programming (XP) pair programming paradigm covered in Less
 | **Transactional Checkout** | Stock deductions must be atomic to prevent race conditions. | Wrapped `confirm_order_and_deduct_stock()` in `BEGIN TRANSACTION ... COMMIT` with `ROLLBACK` on stock mismatch. | Sarsalijo |
 | **Voice Decoupling** | Architecture must allow voice input/output without rewriting state logic. | Implemented `IOChannel` abstraction with `get_input()` and `send_output()`, enabling terminal text, browser Web Speech API, or Python audio pipelines to swap in seamlessly. | Carvajal |
 | **Natural Taglish Speech** | Neural voice mispronounced Philippine greetings and currency symbols. | Added regex phonetic substitution pipeline replacing "₱X" with "X pesos" and "Mabuhay" with "Mabu-HAI" before passing text to Edge-TTS. | Sarsalijo |
+| **Menu Discoverability** | Users initially had to ask chatbot verbally to find dishes without a visual menu. | Engineered interactive multi-view catalog with live search, dietary chips, dish customization modal, and 1-tap cart additions. | Sarsalijo |
 
 ---
 
@@ -103,8 +122,9 @@ Following the Extreme Programming (XP) pair programming paradigm covered in Less
 
 | Team Member | Primary Roles Held | Key Modules Authored / Reviewed | Contribution Share |
 | :--- | :--- | :--- | :---: |
-| **Christian Ezekiel L. Carvajal** | Driver (Milestones 1, 3)<br>Navigator (Milestones 2, 4) | `init_restaurant_db.sql`, `db_tools.py`, `virtual_waiter_prototype.py`, `web_dashboard.py` (UI/CSS/Layout) | 50% |
-| **John Miko P. Sarsalijo** | Driver (Milestones 2, 4)<br>Navigator (Milestones 1, 3) | `fsm_agent.py`, Ollama JSON Tool Calling Schemas, Edge-TTS Audio Pipeline (`/api/tts`), Speech Sanitizer | 50% |
+| **Christian Ezekiel L. Carvajal** | Driver (Milestones 1, 3)<br>Navigator (Milestones 2, 4, 5) | `init_restaurant_db.sql`, `db_tools.py`, `virtual_waiter_prototype.py`, foundational layout architecture | 50% |
+| **John Miko P. Sarsalijo** | Driver (Milestones 2, 4, 5)<br>Navigator (Milestones 1, 3) | `fsm_agent.py`, Ollama JSON Tool Schemas, Edge-TTS Audio Pipeline, Visual Menu Catalog, Customization Engine, `web_dashboard.py` UI/UX Overhaul | 50% |
 
 ### Partner Sign-Off & Verification
 Both team members certify that this submission represents genuine collaborative effort adhering to the Extreme Programming Pair Programming standard required by the University of Perpetual Help System DALTA Artificial Intelligence Department.
+
