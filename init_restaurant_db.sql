@@ -2,14 +2,8 @@
 -- Subject: BSCS 3112 - Artificial Intelligence Lab (Lesson 6)
 -- Database: restaurant.db
 
--- 1. Drop existing tables if recreating
-DROP TABLE IF EXISTS order_line_items;
-DROP TABLE IF EXISTS table_sessions;
-DROP TABLE IF EXISTS menu_items;
-
--- 2. Menu Items Table
--- Stores real-time campus bistro dining offerings, stock availability, and allergen profiles.
-CREATE TABLE menu_items (
+-- 1. Create tables if not existing (Preserves active table sessions)
+CREATE TABLE IF NOT EXISTS menu_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
     category TEXT NOT NULL,
@@ -21,7 +15,7 @@ CREATE TABLE menu_items (
 
 -- 3. Table Sessions Table
 -- Tracks conversational state machine lifecycle and table identification.
-CREATE TABLE table_sessions (
+CREATE TABLE IF NOT EXISTS table_sessions (
     session_id TEXT PRIMARY KEY,
     table_no INTEGER NOT NULL,
     status TEXT NOT NULL DEFAULT 'STATE_GREETING',
@@ -31,7 +25,7 @@ CREATE TABLE table_sessions (
 
 -- 4. Order Line Items Table
 -- Stores active cart items bound to a specific table session, including customizations.
-CREATE TABLE order_line_items (
+CREATE TABLE IF NOT EXISTS order_line_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     session_id TEXT NOT NULL,
     item_id INTEGER NOT NULL,
@@ -45,7 +39,7 @@ CREATE TABLE order_line_items (
 
 -- 5. Seed Data: Perpetual Bistro Menu Offerings
 -- Includes distinct categories, ingredients, allergens, and an out-of-stock item for edge testing.
-INSERT INTO menu_items (name, category, price, stock_qty, allergens, description) VALUES
+INSERT OR IGNORE INTO menu_items (name, category, price, stock_qty, allergens, description) VALUES
 -- Burgers & Sandwiches
 ('Perpetual Classic Burger', 'Burgers', 150.00, 25, 'Gluten, Dairy', 'Juicy beef patty with cheddar cheese, crisp lettuce, tomato, and house bistro sauce.'),
 ('Bacon Mushroom Melt Burger', 'Burgers', 185.00, 15, 'Gluten, Dairy, Pork', 'Angus beef patty with smoked bacon, sautéed mushrooms, and melted Swiss cheese.'),
@@ -71,4 +65,10 @@ INSERT INTO menu_items (name, category, price, stock_qty, allergens, description
 
 -- Desserts
 ('Molten Lava Chocolate Cake', 'Desserts', 125.00, 12, 'Gluten, Dairy, Egg', 'Decadent dark chocolate sponge cake with warm molten chocolate center.'),
-('Classic New York Cheesecake', 'Desserts', 135.00, 10, 'Gluten, Dairy, Egg', 'Dense velvety cream cheese on buttery graham cracker crust with berry compote.');
+('Classic New York Cheesecake', 'Desserts', 135.00, 10, 'Gluten, Dairy, Egg', 'Dense velvety cream cheese on buttery graham cracker crust with berry compote.'),
+
+-- Value Meal Combos (Perpetual Student Deals)
+('Perpetual Champion Combo', 'Combos', 285.00, 25, 'Gluten, Dairy', 'Perpetual Classic Burger + Loaded Cheese Fries + Fresh Calamansi Iced Tea. (Save ₱30)'),
+('Pasta & Sweet Treat Combo', 'Combos', 330.00, 20, 'Gluten, Dairy, Egg, Pork', 'Creamy Carbonara + Classic New York Cheesecake + Classic Brewed Coffee. (Save ₱50)'),
+("Chef Ezekiel's Special Duo", 'Combos', 420.00, 15, 'Gluten, Dairy, Pork', 'Bacon Mushroom Melt Burger + Truffle Mushroom Pasta + 2x Fresh Calamansi Iced Tea. (Save ₱60)'),
+('Late Night Study Fuel Combo', 'Combos', 210.00, 30, 'Dairy, Gluten', 'Golden French Fries + Crispy Onion Rings + Iced Caramel Macchiato. (Save ₱30)');

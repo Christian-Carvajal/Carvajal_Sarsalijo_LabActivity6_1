@@ -6,6 +6,7 @@ Handles SQLite operations, transactional integrity, stock deduction, and allerge
 
 import os
 import sqlite3
+import json
 from typing import Dict, Any, List, Optional
 import uuid
 
@@ -26,9 +27,28 @@ SQL_INIT_PATH = os.path.join(_BASE_DIR, "init_restaurant_db.sql")
 
 
 def get_db_connection(db_path: str = DB_PATH) -> sqlite3.Connection:
-    """Creates a thread-safe connection to the SQLite database with dictionary rows."""
+    """Creates a thread-safe connection to the SQLite database with dictionary rows and ensures tables exist."""
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
+    # Ensure kitchen_tickets table exists
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS kitchen_tickets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ticket_id TEXT UNIQUE NOT NULL,
+            table_no INTEGER NOT NULL,
+            session_id TEXT NOT NULL,
+            items_json TEXT NOT NULL,
+            subtotal REAL NOT NULL,
+            payment_method TEXT NOT NULL DEFAULT 'CASH',
+            payment_ref TEXT DEFAULT '',
+            status TEXT NOT NULL DEFAULT 'PREPARING',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """
+    )
+    conn.commit()
     return conn
 
 
@@ -234,6 +254,14 @@ def add_item_to_order(session_id: str, item_name: str, qty: int = 1, instruction
                 "recommended_alternatives": alternatives,
                 "suggestion": f"Would you like to try our {alt_names} instead?",
             }
+
+        # Ensure session exists in table_sessions (self-healing for web kiosk)
+        cursor.execute("SELECT session_id FROM table_sessions WHERE session_id = ?", (session_id,))
+        if not cursor.fetchone():
+            cursor.execute(
+                "INSERT OR REPLACE INTO table_sessions (session_id, table_no, status, updated_at) VALUES (?, 1, 'STATE_TAKING_ORDER', CURRENT_TIMESTAMP)",
+                (session_id,),
+            )
 
         # Check if identical item with identical instructions already exists in this session
         cursor.execute(
@@ -445,8 +473,19 @@ def confirm_order_and_deduct_stock(session_id: str, db_path: str = DB_PATH) -> D
             cursor.execute("SELECT table_no, status FROM table_sessions WHERE session_id = ?", (session_id,))
             session = cursor.fetchone()
             if not session:
-                conn.rollback()
-                return {"status": "error", "message": f"Session {session_id} not found."}
+                # Self-healing: Check if order items exist for this session in order_line_items
+                cursor.execute("SELECT COUNT(*) as cnt FROM order_line_items WHERE session_id = ?", (session_id,))
+                cnt_row = cursor.fetchone()
+                if cnt_row and cnt_row["cnt"] > 0:
+                    cursor.execute(
+                        "INSERT OR REPLACE INTO table_sessions (session_id, table_no, status, updated_at) VALUES (?, 1, 'STATE_REVIEW', CURRENT_TIMESTAMP)",
+                        (session_id,),
+                    )
+                    cursor.execute("SELECT table_no, status FROM table_sessions WHERE session_id = ?", (session_id,))
+                    session = cursor.fetchone()
+                else:
+                    conn.rollback()
+                    return {"status": "error", "message": f"Session {session_id} not found."}
 
             # Retrieve order line items
             cursor.execute(
@@ -492,6 +531,18 @@ def confirm_order_and_deduct_stock(session_id: str, db_path: str = DB_PATH) -> D
             tab = view_current_order(session_id, db_path=db_path)
             receipt_id = f"PB-{session['table_no']}-{str(uuid.uuid4())[:6].upper()}"
 
+            # Automatically dispatch to Kitchen Display System (KDS)
+            create_kitchen_ticket(
+                table_no=session["table_no"],
+                session_id=session_id,
+                items=tab["line_items"],
+                grand_total=tab["grand_total"],
+                payment_method="CASH",
+                payment_ref="COUNTER",
+                ticket_id=receipt_id,
+                db_path=db_path
+            )
+
             return {
                 "status": "success",
                 "receipt_id": receipt_id,
@@ -508,3 +559,159 @@ def confirm_order_and_deduct_stock(session_id: str, db_path: str = DB_PATH) -> D
         except Exception as e:
             conn.rollback()
             return {"status": "error", "message": f"Database transaction aborted: {str(e)}"}
+
+
+# =====================================================================
+# KITCHEN DISPLAY SYSTEM (KDS) & INVENTORY ANALYTICS EXTENSIONS
+# =====================================================================
+
+def create_kitchen_ticket(
+    table_no: int,
+    session_id: str,
+    items: List[Dict[str, Any]],
+    grand_total: float,
+    payment_method: str = "CASH",
+    payment_ref: str = "",
+    ticket_id: Optional[str] = None,
+    db_path: str = DB_PATH
+) -> Dict[str, Any]:
+    """Inserts an active kitchen ticket into the kitchen fulfillment queue."""
+    t_id = ticket_id or f"PB-{table_no}-{str(uuid.uuid4())[:6].upper()}"
+    items_serialized = json.dumps(items)
+    with get_db_connection(db_path) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT OR REPLACE INTO kitchen_tickets 
+            (ticket_id, table_no, session_id, items_json, subtotal, payment_method, payment_ref, status, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'PREPARING', CURRENT_TIMESTAMP)
+            """,
+            (t_id, table_no, session_id, items_serialized, grand_total, payment_method, payment_ref),
+        )
+        conn.commit()
+    return {
+        "status": "success",
+        "ticket_id": t_id,
+        "table_no": table_no,
+        "payment_method": payment_method,
+        "payment_ref": payment_ref,
+        "kitchen_status": "PREPARING"
+    }
+
+
+def get_kitchen_tickets(status_filter: Optional[str] = None, db_path: str = DB_PATH) -> List[Dict[str, Any]]:
+    """Retrieves kitchen tickets with parsed item arrays."""
+    with get_db_connection(db_path) as conn:
+        cursor = conn.cursor()
+        if status_filter and status_filter.upper() != "ALL":
+            cursor.execute(
+                "SELECT * FROM kitchen_tickets WHERE status = ? ORDER BY id DESC",
+                (status_filter.upper(),)
+            )
+        else:
+            cursor.execute("SELECT * FROM kitchen_tickets ORDER BY id DESC")
+        rows = cursor.fetchall()
+
+    results = []
+    for r in rows:
+        ticket = dict(r)
+        try:
+            ticket["items"] = json.loads(ticket.get("items_json") or "[]")
+        except Exception:
+            ticket["items"] = []
+        results.append(ticket)
+    return results
+
+
+def update_kitchen_ticket_status(ticket_id: str, new_status: str, db_path: str = DB_PATH) -> bool:
+    """Updates the status of a kitchen ticket ('PREPARING', 'READY', 'SERVED')."""
+    valid = ["PREPARING", "READY", "SERVED"]
+    clean_status = new_status.upper().strip()
+    if clean_status not in valid:
+        return False
+    with get_db_connection(db_path) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE kitchen_tickets SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE ticket_id = ?",
+            (clean_status, ticket_id),
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+
+
+def get_analytics_summary(db_path: str = DB_PATH) -> Dict[str, Any]:
+    """Aggregates business intelligence metrics: total sales, order volume, and inventory health."""
+    with get_db_connection(db_path) as conn:
+        cursor = conn.cursor()
+        
+        # 1. Total revenue & count from kitchen tickets
+        cursor.execute("SELECT COUNT(*) as count, COALESCE(SUM(subtotal), 0) as total_rev FROM kitchen_tickets")
+        sales_row = cursor.fetchone()
+        total_orders = sales_row["count"] if sales_row else 0
+        total_revenue = sales_row["total_rev"] if sales_row else 0.0
+
+        # 2. Tickets by status
+        cursor.execute("SELECT status, COUNT(*) as count FROM kitchen_tickets GROUP BY status")
+        status_counts = {r["status"]: r["count"] for r in cursor.fetchall()}
+
+        # 3. Inventory overview: low stock (<= 5)
+        cursor.execute("SELECT name, category, price, stock_qty FROM menu_items ORDER BY stock_qty ASC")
+        all_items = [dict(r) for r in cursor.fetchall()]
+        low_stock_items = [item for item in all_items if item["stock_qty"] <= 5]
+
+        # 4. Categories sales count
+        cursor.execute("SELECT category, COUNT(*) as item_count, AVG(price) as avg_price FROM menu_items GROUP BY category")
+        categories_stat = [dict(r) for r in cursor.fetchall()]
+
+    return {
+        "status": "success",
+        "total_revenue": round(total_revenue, 2),
+        "total_orders": total_orders,
+        "status_breakdown": status_counts,
+        "low_stock_count": len(low_stock_items),
+        "low_stock_items": low_stock_items,
+        "all_inventory": all_items,
+        "category_summary": categories_stat
+    }
+
+
+def restock_menu_item(item_name: str, qty_to_add: int = 10, db_path: str = DB_PATH) -> Dict[str, Any]:
+    """Adds stock quantity to a specific menu item."""
+    with get_db_connection(db_path) as conn:
+        cursor = conn.cursor()
+        item = _find_menu_item(item_name, conn)
+        if not item:
+            return {"status": "error", "message": f"Item '{item_name}' not found."}
+        
+        cursor.execute(
+            "UPDATE menu_items SET stock_qty = stock_qty + ? WHERE id = ?",
+            (qty_to_add, item["id"])
+        )
+        conn.commit()
+        cursor.execute("SELECT stock_qty FROM menu_items WHERE id = ?", (item["id"],))
+        updated_stock = cursor.fetchone()["stock_qty"]
+    return {
+        "status": "success",
+        "item_name": item["name"],
+        "added_qty": qty_to_add,
+        "new_stock": updated_stock,
+        "message": f"Successfully added {qty_to_add} stock to {item['name']}. Current stock: {updated_stock}."
+    }
+
+
+def restock_all_items(target_min_qty: int = 20, db_path: str = DB_PATH) -> Dict[str, Any]:
+    """Restocks any item below target_min_qty up to target_min_qty."""
+    with get_db_connection(db_path) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE menu_items SET stock_qty = ? WHERE stock_qty < ?",
+            (target_min_qty, target_min_qty)
+        )
+        affected = cursor.rowcount
+        conn.commit()
+    return {
+        "status": "success",
+        "affected_items": affected,
+        "new_minimum": target_min_qty,
+        "message": f"Restocked {affected} items to at least {target_min_qty} units."
+    }
