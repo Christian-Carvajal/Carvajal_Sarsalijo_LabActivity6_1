@@ -158,5 +158,23 @@
   - Headless Edge DOM dump confirmed clean rendering of `.card-badge-bestseller`, `.card-badge-combo`, and category filters.
   - End-to-end chat and voice ordering verified: combo items add to cart, transition FSM, deduct stock, and dispatch KDS fulfillment tickets.
 
+### [2026-11-06 10:45] - Filter Reset Controls, Kiosk Launch Script & Auto-Browser Launcher
+- **Role:** John Miko P. Sarsalijo (Driver / Fullstack Lead) / AI Assistant (Navigator)
+- **Target Files:** [`templates/index.html`](templates/index.html), [`web_dashboard.py`](web_dashboard.py), [`run_kiosk.bat`](run_kiosk.bat)
+- **Category:** Kiosk UX Polish, Menu Navigation & Developer Automation
+- **Description:**
+  1. **Menu Filter Reset & Empty State Enhancements:**
+     - Added a dedicated "Show All Items ✕" clear-filter button in the catalog controls header that dynamically appears when a filter or search query is active.
+     - Implemented `resetAllFilters()` function to instantly restore the full 21-item menu view, reset active category tabs to 'All Menu Items', clear dietary chips, and wipe search queries with responsive toast feedback.
+     - Updated Chef Specialties CTA buttons and bento cards to seamlessly transition to the complete catalog.
+     - Enhanced empty-state feedback with a 1-click "Reset All Filters ↺" recovery button.
+     - Synchronized sidebar category buttons automatically when toggling between Kiosk and Chat views.
+  2. **Automated Web Browser Launching (`web_dashboard.py`):**
+     - Enhanced server CLI entry point to automatically launch the default system browser to the active kiosk URL upon startup (`--no-browser` flag available).
+  3. **Windows 1-Click Launch Script (`run_kiosk.bat`):**
+     - Added convenience batch script for instant terminal and web dashboard startup.
+- **Verification:** Verified syntax with `py_compile`, tested menu filtering and reset routines, checked repository integrity, and verified git sync.
+
+
 
 

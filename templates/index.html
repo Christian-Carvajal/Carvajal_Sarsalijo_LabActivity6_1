@@ -1318,6 +1318,26 @@
             color: #FFFFFF;
         }
 
+        .btn-clear-filter {
+            background: #FEF2F2;
+            border: 1px solid #FCA5A5;
+            color: #991B1B;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: var(--radius-pill);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .btn-clear-filter:hover {
+            background: #FEE2E2;
+            border-color: #EF4444;
+        }
+
         /* Food Cards Grid (Matching Reference Image 1) */
         .food-grid {
             display: grid;
@@ -3004,7 +3024,7 @@
                                 <span class="chef-pill-badge">❤️ Crafted for Perpetualites</span>
                             </div>
                             <div class="chef-cta-actions">
-                                <button class="btn-chef-action" onclick="event.stopPropagation(); filterCategory('Burgers'); switchView('kiosk');">
+                                <button class="btn-chef-action" onclick="event.stopPropagation(); filterCategory('all'); switchView('kiosk');">
                                     Taste Our Chefs' Specialties →
                                 </button>
                                 <button class="btn-chef-secondary" onclick="event.stopPropagation(); switchView('chat');">
@@ -3049,7 +3069,7 @@
                 </div>
 
                 <!-- Bottom 3 Bento Tiles (Photos, About, Hours) -->
-                <div class="bento-card bento-small-card" onclick="filterCategory('Burgers'); switchView('kiosk');">
+                <div class="bento-card bento-small-card" onclick="filterCategory('all'); switchView('kiosk');">
                     <div>
                         <div class="bento-small-title"><span>🍔</span> CHEF SPECIALTIES</div>
                         <p class="bento-small-desc">Gourmet beef burgers, artisanal pasta dishes, and golden crispy sides prepared fresh daily.</p>
@@ -3174,8 +3194,11 @@
                     <!-- Catalog Controls -->
                     <div class="catalog-controls-bar">
                         <div class="catalog-title-group">
-                            <h3 class="catalog-heading" id="catalogSectionTitle">Special Bistro Deals</h3>
-                            <span class="catalog-count-label" id="catalogItemCount">17 items available</span>
+                            <h3 class="catalog-heading" id="catalogSectionTitle">All Menu Items</h3>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span class="catalog-count-label" id="catalogItemCount">21 items available</span>
+                                <button id="btnResetFilters" class="btn-clear-filter" style="display: none;" onclick="resetAllFilters()">Show All Items ✕</button>
+                            </div>
                         </div>
                         <div class="view-mode-toggle">
                             <button class="view-toggle-btn active" onclick="setGridMode('grid', this)">⊞ Grid</button>
@@ -3779,6 +3802,11 @@
             } else if (viewName === 'kiosk') {
                 document.getElementById('viewKiosk').classList.add('active');
                 document.getElementById('navKiosk').classList.add('active');
+                const activeBtn = document.querySelector(`.cat-item-btn[data-cat="${currentCategory}"]`);
+                if (activeBtn) {
+                    document.querySelectorAll('.cat-item-btn').forEach(b => b.classList.remove('active'));
+                    activeBtn.classList.add('active');
+                }
             } else if (viewName === 'chat') {
                 document.getElementById('viewChat').classList.add('active');
                 document.getElementById('navChat').classList.add('active');
@@ -3854,6 +3882,10 @@
                 const res = await fetch('/api/menu');
                 const data = await res.json();
                 allMenuItems = data.items || [];
+                const heading = document.getElementById('catalogSectionTitle');
+                if (heading) heading.innerText = 'All Menu Items';
+                const badgeAll = document.getElementById('badgeCountAll');
+                if (badgeAll) badgeAll.innerText = allMenuItems.length;
                 renderFoodGrid(allMenuItems);
             } catch(e) {
                 console.error("Failed to fetch menu:", e);
@@ -3889,14 +3921,22 @@
                 return true;
             });
 
-            document.getElementById('catalogItemCount').innerText = `${filtered.length} items available`;
+            const isFiltered = currentCategory !== 'all' || currentDietary !== null || currentSearchQuery !== '';
+            const resetBtn = document.getElementById('btnResetFilters');
+            if (resetBtn) {
+                resetBtn.style.display = isFiltered ? 'inline-flex' : 'none';
+            }
+            document.getElementById('catalogItemCount').innerText = isFiltered
+                ? `${filtered.length} of ${items.length} items shown`
+                : `${filtered.length} items available`;
 
             if (filtered.length === 0) {
                 grid.innerHTML = `
                     <div style="grid-column: 1/-1; text-align: center; padding: 50px 20px; color: var(--text-muted);">
                         <div style="font-size: 38px; margin-bottom: 8px;">🍽️</div>
                         <h4 style="font-size: 16px; font-weight: 700; color: var(--text-primary);">No dishes found</h4>
-                        <p style="font-size: 13px;">Try adjusting your search query or dietary filters.</p>
+                        <p style="font-size: 13px; margin-bottom: 14px;">Try adjusting your search query, clearing dietary filters, or viewing all categories.</p>
+                        <button class="btn-clear-filter" onclick="resetAllFilters()" style="font-size: 13px; padding: 6px 16px;">Reset All Filters ↺</button>
                     </div>`;
                 return;
             }
@@ -3975,9 +4015,14 @@
         }
 
         function filterCategory(cat, btn) {
-            currentCategory = cat;
+            currentCategory = cat || 'all';
             document.querySelectorAll('.cat-item-btn').forEach(b => b.classList.remove('active'));
-            if (btn) btn.classList.add('active');
+            if (btn) {
+                btn.classList.add('active');
+            } else {
+                const targetBtn = document.querySelector(`.cat-item-btn[data-cat="${cat}"]`);
+                if (targetBtn) targetBtn.classList.add('active');
+            }
             const titleMap = {
                 'all': 'All Menu Items',
                 'bestsellers': '⭐ Signature Best Sellers',
@@ -3988,8 +4033,20 @@
                 'Beverages': 'Refreshing Beverages',
                 'Desserts': 'Decadent Desserts'
             };
-            document.getElementById('catalogSectionTitle').innerText = titleMap[cat] || cat;
+            const heading = document.getElementById('catalogSectionTitle');
+            if (heading) heading.innerText = titleMap[cat] || cat;
             renderFoodGrid(allMenuItems);
+        }
+
+        function resetAllFilters() {
+            currentCategory = 'all';
+            currentDietary = null;
+            currentSearchQuery = '';
+            const searchInput = document.getElementById('kioskSearchInput');
+            if (searchInput) searchInput.value = '';
+            document.querySelectorAll('.dietary-chip').forEach(c => c.classList.remove('active'));
+            filterCategory('all');
+            showToast('Showing all menu items!', '🍽️');
         }
 
         function toggleDietary(type, chip) {
@@ -4000,6 +4057,7 @@
                 document.querySelectorAll('.dietary-chip').forEach(c => c.classList.remove('active'));
                 currentDietary = type;
                 chip.classList.add('active');
+                showToast(`Filtered by ${chip.innerText.trim()}. Click again to reset.`, 'ℹ️');
             }
             renderFoodGrid(allMenuItems);
         }

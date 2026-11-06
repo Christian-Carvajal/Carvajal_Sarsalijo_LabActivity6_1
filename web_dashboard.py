@@ -420,9 +420,14 @@ def find_available_port(preferred_port=8000, fallback_ports=(5000, 8001, 8080, 8
 
 if __name__ == "__main__":
     import argparse
+    import time
+    import threading
+    import webbrowser
+
     parser = argparse.ArgumentParser(description="Perpetual Bistro Web Tablet Ordering Dashboard")
     parser.add_argument("--port", type=int, default=8000, help="Port to run the dashboard on (default: 8000)")
     parser.add_argument("--host", type=str, default="127.0.0.1", help="Host address (default: 127.0.0.1)")
+    parser.add_argument("--no-browser", action="store_true", help="Do not automatically open the browser")
     args = parser.parse_args()
 
     port = args.port
@@ -435,8 +440,22 @@ if __name__ == "__main__":
             port = find_available_port(preferred_port=8000)
             print(f"Notice: Port {old_port} was occupied. Automatically selected available port {port}.")
 
+    app_url = f"http://127.0.0.1:{port}"
     print(f"\n==================================================================")
     print(f"[Perpetual Bistro] Starting Perpetual Bistro Web Tablet Dashboard")
-    print(f"[Perpetual Bistro] Local URL: http://localhost:{port} or http://127.0.0.1:{port}")
+    print(f"[Perpetual Bistro] Local URL: {app_url} or http://localhost:{port}")
+    print(f"[Perpetual Bistro] Launching web app in your browser...")
     print(f"==================================================================\n")
-    uvicorn.run("web_dashboard:app", host=args.host, port=port, reload=True)
+
+    if not args.no_browser:
+        def launch_browser():
+            time.sleep(1.2)
+            try:
+                webbrowser.open(app_url)
+            except Exception as e:
+                print(f"[Notice] Could not auto-launch browser: {e}. Please open {app_url} manually.")
+
+        threading.Thread(target=launch_browser, daemon=True).start()
+
+    project_dir = os.path.dirname(os.path.abspath(__file__))
+    uvicorn.run("web_dashboard:app", host=args.host, port=port, reload=True, app_dir=project_dir)
