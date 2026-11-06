@@ -4,5 +4,10 @@ cd /d "%~dp0"
 echo ==================================================================
 echo   Starting Perpetual Bistro Web Tablet Dashboard...
 echo ==================================================================
-python web_dashboard.py --port 8000
+where py >nul 2>nul
+if %errorlevel% equ 0 (
+    py -3.14 web_dashboard.py --port 8000
+) else (
+    python web_dashboard.py --port 8000
+)
 pause

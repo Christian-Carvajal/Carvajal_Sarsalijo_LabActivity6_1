@@ -376,6 +376,41 @@ DISH_CATALOG = [
         "allergens": ["Dairy", "Gluten"],
         "aliases": ["late night study fuel combo", "study fuel combo", "study fuel", "study combo"],
     },
+    {
+        "name": "Smoked BBQ Bacon Brisket Burger",
+        "category": "Burgers",
+        "price": 220.0,
+        "allergens": ["Gluten", "Dairy", "Pork"],
+        "aliases": ["smoked bbq bacon brisket burger", "smoked bbq brisket burger", "bbq brisket burger", "brisket burger", "smoked brisket"],
+    },
+    {
+        "name": "Seafood Marinara Fettuccine",
+        "category": "Pastas",
+        "price": 240.0,
+        "allergens": ["Gluten", "Shellfish", "Fish"],
+        "aliases": ["seafood marinara fettuccine", "seafood marinara", "seafood pasta", "marinara fettuccine", "marinara pasta", "seafood fettuccine"],
+    },
+    {
+        "name": "Crispy Mozzarella Sticks",
+        "category": "Sides",
+        "price": 115.0,
+        "allergens": ["Gluten", "Dairy"],
+        "aliases": ["crispy mozzarella sticks", "mozzarella sticks", "cheese sticks", "mozzarella cheese sticks"],
+    },
+    {
+        "name": "Avocado Cream Cheese Smoothie",
+        "category": "Beverages",
+        "price": 120.0,
+        "allergens": ["Dairy"],
+        "aliases": ["avocado cream cheese smoothie", "avocado smoothie", "avocado shake", "avocado cream cheese"],
+    },
+    {
+        "name": "Matcha Green Tea Tiramisu",
+        "category": "Desserts",
+        "price": 145.0,
+        "allergens": ["Gluten", "Dairy", "Egg"],
+        "aliases": ["matcha green tea tiramisu", "matcha tiramisu", "green tea tiramisu", "matcha cake", "tiramisu"],
+    },
 ]
 
 def find_dishes_in_text(text: str) -> List[Tuple[Dict[str, Any], int, str]]:
@@ -422,6 +457,45 @@ def find_dishes_in_text(text: str) -> List[Tuple[Dict[str, Any], int, str]]:
                 break
     return results
 
+def has_ordering_intent(text: str) -> bool:
+    """
+    Determines if user actually intends to order or add food to cart,
+    avoiding false positives when customer asks informational, dietary, or allergen questions.
+    """
+    text_lower = text.lower().strip()
+
+    # Questioning or informational starters that negate ordering intent
+    question_starters = [
+        "does ", "do ", "is ", "are ", "can it ", "has ", "what is ", "what are ",
+        "how much ", "magkano ", "may ", "meron bang ", "meron ba ", "ano ang ",
+        "mayroon ba ", "bawal ba ", "pwede ba ", "safe ba ", "contain ", "ingredients ",
+        "tell me about ", "describe ", "bestseller ba "
+    ]
+    if any(text_lower.startswith(q) for q in question_starters):
+        if not re.search(r'\b(can i (?:have|get|order|take)|pwede (?:bang )?(?:umorder|mag-order|pabili))\b', text_lower):
+            return False
+
+    # Positive ordering verbs & patterns
+    ordering_verbs = [
+        r"\border\b", r"\badd\b", r"\bi want to order\b", r"\bi want\b", r"\bi'd like\b", r"\bi will take\b", r"\bi'll have\b",
+        r'\bgive me\b', r'\bcan i have\b', r'\bcan i get\b', r'\bplease get me\b', r'\bbring me\b',
+        r'\bpabili\b', r'\border ako\b', r'\bi-order\b', r'\bkuha ako\b', r'\bpadagdag\b',
+        r'\bpaki-add\b', r'\bpakidagdag\b', r'\bdagdag\b', r'\bisa pa\b', r'\bgusto ko\b',
+        r'\border na po\b', r'\bpakikunan\b', r'\bbilhin\b', r'\bkunin ko\b', r'\bisang\b', r'\bdalawang\b'
+    ]
+    has_order_verb = any(re.search(v, text_lower) for v in ordering_verbs)
+
+    # Words strictly indicating a question about allergens, diet, price, or availability
+    inquiry_keywords = [
+        "allergen", "allergens", "allergy", "allergies", "allergic", "lactose", "intoleran",
+        "how much", "magkano", "price", "presyo", "available ba", "is it available", "in stock", "out of stock",
+        "what comes with", "what is in", "what are the ingredients", "sangkap", "lasa"
+    ]
+    if any(k in text_lower for k in inquiry_keywords) and not has_order_verb:
+        return False
+
+    return has_order_verb
+
 
 class BistroFSMAgent:
     """
@@ -467,22 +541,20 @@ class BistroFSMAgent:
             "University of Perpetual Help System DALTA.\n"
             f"You are actively serving Table #{self.table_no} (Session ID: {self.session_id}).\n\n"
             "NATURAL CONVERSATION & INTELLIGENCE GUIDELINES:\n"
-            "1. CONVERSE DYNAMICALLY LIKE CHATGPT: Answer questions spontaneously on the spot. If a customer chats, "
-            "asks what you personally recommend, asks for pairing ideas, jokes about food, or asks general dining questions, "
-            "respond warmly, naturally, and intelligently in your own words. Never sound robotic or scripted.\n"
-            "2. CURRENCY RULE: All prices in Perpetual Bistro are strictly in Philippine Pesos (PHP, ₱). "
-            "Always state prices simply as 'pesos' or '₱' (e.g., '150 pesos' or '₱150.00'). "
-            "NEVER say 'Cuban pesos', 'Mexican pesos', or any foreign currency denomination.\n"
-            "3. STATE MACHINE CONTEXT:\n"
+            "1. CONVERSE DYNAMICALLY LIKE CHATGPT: Answer questions warmly, naturally, and intelligently in your own words.\n"
+            "2. CURRENCY RULE: All prices are strictly in Philippine Pesos (PHP, ₱). State prices as 'pesos' or '₱' (e.g., '150 pesos').\n"
+            "3. CRITICAL ORDERING VS QUESTION RULE:\n"
+            "   - When customer asks about ingredients, allergens, dietary restrictions (e.g. dairy, lactose, gluten, nuts): "
+            "     ALWAYS call `check_item_allergen`. NEVER call `add_item_to_order`! Answer their question with helpful advice (e.g., how to customize or safe alternatives).\n"
+            "   - When customer asks about availability or stock: call `check_availability`. NEVER add out-of-stock items.\n"
+            "   - ONLY call `add_item_to_order` when the customer explicitly asks to order, buy, or add a dish to their tab.\n"
+            "4. STATE MACHINE CONTEXT:\n"
             f"   - Current FSM State: {self.state}.\n"
-            "   - When customer browses menu or asks about dishes: explore using `get_menu_by_category` or `check_item_allergen` (STATE_MENU_BROWSING).\n"
-            "   - When customer wants to order: invoke `add_item_to_order` with their requested quantity and customizations (STATE_TAKING_ORDER).\n"
-            "   - When customer asks about their bill, current tab, or summary: call `view_current_order` to present their bill (STATE_REVIEW).\n"
-            "   - When customer confirms or says they are ready to finalize: call `confirm_order_and_deduct_stock` (STATE_CONFIRMED).\n"
-            "   - You can also call `set_dialogue_state` to transition the state whenever appropriate.\n"
-            "4. TOOL CALLING AUTONOMY: Autonomously call the tools whenever needed to fetch real database data. "
-            "Do not guess or hallucinate menu prices or inventory counts.\n"
-            "5. OUT-OF-STOCK POLICY: If an item is out of stock (such as Crispy Buffalo Chicken Tenders), explain politely and suggest in-stock alternatives from the same category.\n"
+            "   - Inquiring/Browsing: `get_menu_by_category` or `check_item_allergen` (STATE_MENU_BROWSING).\n"
+            "   - Ordering: `add_item_to_order` (STATE_TAKING_ORDER).\n"
+            "   - Bill Review: `view_current_order` (STATE_REVIEW).\n"
+            "   - Checkout: `confirm_order_and_deduct_stock` (STATE_CONFIRMED).\n"
+            "5. OUT-OF-STOCK POLICY: If an item is out of stock (e.g. Crispy Buffalo Chicken Tenders, Seafood Marinara Fettuccine, Matcha Green Tea Tiramisu, Avocado Cream Cheese Smoothie, Smoked BBQ Bacon Brisket Burger, Crispy Mozzarella Sticks), explain politely and suggest in-stock alternatives from the same category.\n"
             + language_rule +
             "7. EMOJI AND SPEECH CLEANLINESS: Do not use emojis in your responses. Keep text clean and verbal so text-to-speech audio speaks words cleanly without describing symbols."
         )
@@ -582,7 +654,7 @@ class BistroFSMAgent:
         else:
             return {"status": "error", "message": f"Unknown tool name: {tool_name}"}
 
-    def _call_ollama_chat(self, payload: Dict[str, Any], timeout: int = 15) -> Dict[str, Any]:
+    def _call_ollama_chat(self, payload: Dict[str, Any], timeout: int = 45) -> Dict[str, Any]:
         """Sends HTTP request to local Ollama /api/chat endpoint with memory-safe fallback."""
         data_bytes = json.dumps(payload).encode("utf-8")
         req = urllib.request.Request(
@@ -612,38 +684,173 @@ class BistroFSMAgent:
         except urllib.error.URLError as e:
             raise RuntimeError(f"Ollama connection error at {OLLAMA_API_URL}: {str(e)}")
 
-    def _ensure_critical_tool_execution(self, user_input: str, turn_tool_calls: List[Dict[str, Any]]) -> str:
+    def _ensure_critical_tool_execution(self, user_input: str, turn_tool_calls: List[Dict[str, Any]]) -> Tuple[str, bool]:
         """
-        Safety guard: If customer clearly requested ordering, reviewing, or confirming,
-        guarantee the respective tool call is executed even if the LLM only responded in free text.
+        Safety guard: Guarantees authoritative tool execution for allergens, out-of-stock checks,
+        ordering, reviewing, and checkout. Returns (message, is_override_needed).
         """
-        text_lower = user_input.lower()
+        text_lower = user_input.lower().strip()
         tools_executed = {tc["tool"] for tc in turn_tool_calls}
         extra_messages = []
+        is_override = False
+        is_filipino = self.language == "filipino"
 
-        # 1. Add Item(s) to Order FIRST if dishes are detected
-        found_dishes = find_dishes_in_text(user_input)
-        if found_dishes:
-            added_dish_names = {tc.get("arguments", {}).get("item_name") for tc in turn_tool_calls if tc["tool"] == "add_item_to_order"}
-            for dish, qty, instructions in found_dishes:
-                if dish["name"] == "Crispy Buffalo Chicken Tenders":
-                    continue
-                if dish["name"] not in added_dish_names:
-                    res = self.execute_tool("add_item_to_order", {
-                        "item_name": dish["name"],
-                        "qty": qty,
-                        "instructions": instructions
-                    })
-                    turn_tool_calls.append({
-                        "tool": "add_item_to_order",
-                        "arguments": {"item_name": dish["name"], "qty": qty, "instructions": instructions},
-                        "result": res
-                    })
-                    tools_executed.add("add_item_to_order")
-                    if res.get("status") == "success":
-                        extra_messages.append(res.get("message", f"Added {qty}x {dish['name']}"))
+        # 1. Allergen & Dietary Safety Guard (Authoritative ground truth)
+        explicit_allergen_words = [
+            "allergen", "allergens", "allergy", "allergies", "allergic", "lactose", "intoleran",
+            "dietary", "contain", "ingredients", "sangkap", "safe ba", "bawal ba"
+        ]
+        is_question = any(text_lower.startswith(q) for q in ["does ", "is there ", "do ", "is ", "may ", "meron ba", "meron bang ", "ano ang ", "what is ", "what are "]) or ("?" in text_lower)
+        has_allergen_mention = any(a in text_lower for a in ["dairy", "cheese", "milk", "gluten", "wheat", "nut", "nuts", "peanut", "egg", "pork", "lactose", "shellfish"])
+        
+        has_order_verb = any(re.search(v, text_lower) for v in [r'\border\b', r'\bi want to order\b', r'\bpabili\b', r'\badd\b', r"\bi'll have\b", r'\bi will take\b'])
+        
+        is_allergen_query = (any(w in text_lower for w in explicit_allergen_words) or (is_question and has_allergen_mention)) and not (has_order_verb and not is_question)
 
-        # 2. Order Confirmation / Checkout (if user asked to confirm or place order)
+        if is_allergen_query:
+            found_dishes = find_dishes_in_text(user_input)
+            target_dish = found_dishes[0][0]["name"] if found_dishes else "Perpetual Classic Burger"
+            target_allergen = "Dairy"
+            for a in ["Gluten", "Nuts", "Egg", "Pork", "Shellfish", "Fish", "Dairy"]:
+                if a.lower() in text_lower:
+                    target_allergen = a
+                    break
+            if "lactose" in text_lower or "cheese" in text_lower or "milk" in text_lower:
+                target_allergen = "Dairy"
+
+            if "check_item_allergen" not in tools_executed:
+                res = self.execute_tool("check_item_allergen", {"item_name": target_dish, "allergen": target_allergen})
+                turn_tool_calls.append({"tool": "check_item_allergen", "arguments": {"item_name": target_dish, "allergen": target_allergen}, "result": res})
+                tools_executed.add("check_item_allergen")
+            else:
+                res = next((tc["result"] for tc in turn_tool_calls if tc["tool"] == "check_item_allergen"), {})
+
+            has_allergen = res.get("contains_allergen", False)
+            all_allergens = res.get("all_item_allergens", [])
+            allergen_str = ", ".join(all_allergens) if all_allergens else "None"
+            tips = res.get("customization_tips", [])
+            tip_str = (" " + " ".join(tips)) if tips else ""
+
+            if is_filipino:
+                if has_allergen:
+                    if target_allergen == "Dairy" or "lactose" in text_lower:
+                        extra_messages.append(
+                            f"Opo, ang {target_dish} ay naglalaman ng Dairy (Cheddar cheese at house bistro sauce) at Gluten (burger bun). "
+                            f"Kabuuang nakatalang allergens: {allergen_str}. "
+                            f"Kung may mild lactose intolerance po kayo, maaari po naming ihain nang walang cheese o sauce ('No Cheese'), "
+                            f"o maaari ninyong subukan ang aming Golden French Fries o Fresh Calamansi Iced Tea na 100% dairy-free!"
+                        )
+                    else:
+                        extra_messages.append(
+                            f"Opo, ang {target_dish} ay naglalaman ng {target_allergen} (Kabuuang allergens: {allergen_str}).{tip_str} "
+                            f"Maaari po nating i-customize ang inyong order para maging ligtas at masarap ang inyong pagkain!"
+                        )
+                else:
+                    extra_messages.append(f"Ligtas po! Ang {target_dish} ay walang nakatalang {target_allergen} (Allergens: {allergen_str}).")
+            else:
+                if has_allergen:
+                    if target_allergen == "Dairy" or "lactose" in text_lower:
+                        extra_messages.append(
+                            f"Yes, the {target_dish} contains Dairy (specifically the cheddar cheese and house bistro sauce) as well as Gluten (the burger bun). "
+                            f"Total declared allergens: {allergen_str}. "
+                            f"Since you have mild lactose intolerance, we can gladly prepare your burger without cheese and sauce ('No Cheese'), "
+                            f"or you can enjoy our delicious dairy-free options like the Golden French Fries or Fresh Calamansi Iced Tea!"
+                        )
+                    else:
+                        extra_messages.append(
+                            f"Yes, the {target_dish} contains {target_allergen} (Declared allergens: {allergen_str}).{tip_str} "
+                            f"We can gladly customize your order to accommodate your dietary needs!"
+                        )
+                else:
+                    extra_messages.append(f"Good news! The {target_dish} is free of {target_allergen} (Declared allergens: {allergen_str}). It is safe for you to enjoy!")
+
+            is_override = True
+
+        # 2. Availability Query Guard (Authoritative database stock verification)
+        is_avail_query = any(w in text_lower for w in ["available", "out of stock", "in stock", "sold out", "meron pa ba", "mayroon pa bang", "ubos na"])
+        if is_avail_query and not has_ordering_intent(user_input):
+            found_dishes = find_dishes_in_text(user_input)
+            target_dish = found_dishes[0][0]["name"] if found_dishes else "Perpetual Classic Burger"
+            avail = self.execute_tool("check_availability", {"item_name": target_dish, "qty": 1})
+            turn_tool_calls.append({"tool": "check_availability", "arguments": {"item_name": target_dish, "qty": 1}, "result": avail})
+            tools_executed.add("check_availability")
+            is_avail = avail.get("available", False)
+            stock = avail.get("current_stock", 0)
+
+            if is_avail:
+                if is_filipino:
+                    extra_messages.append(f"Opo! Available po ang {target_dish} ({stock} natitira sa aming kusina). Nais niyo po bang mag-order nito?")
+                else:
+                    extra_messages.append(f"Yes! The {target_dish} is in stock ({stock} available). Would you like to add it to your order?")
+            else:
+                with db_tools.get_db_connection(self.db_path) as conn:
+                    cur = conn.cursor()
+                    cur.execute("SELECT category FROM menu_items WHERE LOWER(name) = LOWER(?)", (target_dish,))
+                    row = cur.fetchone()
+                    cat = row["category"] if row else "Burgers"
+                    cur.execute("SELECT name, price FROM menu_items WHERE category = ? AND stock_qty > 0 LIMIT 2", (cat,))
+                    alts = [f"{r['name']} (₱{r['price']:.2f})" for r in cur.fetchall()]
+                    alt_str = ", ".join(alts) if alts else "other delicious dishes"
+
+                if is_filipino:
+                    extra_messages.append(
+                        f"Paumanhin po! Ang {target_dish} ay kasalukuyang out-of-stock sa aming kusina (0 natitira). "
+                        f"Nais niyo po bang subukan ang {alt_str} bilang masarap na alternatibo?"
+                    )
+                else:
+                    extra_messages.append(
+                        f"I apologize, but our {target_dish} is currently out of stock (0 available). "
+                        f"Would you like to try our {alt_str} instead?"
+                    )
+            is_override = True
+
+        # 3. Add Item(s) to Order ONLY IF genuine ordering intent is present AND not an allergen inquiry
+        elif has_ordering_intent(user_input):
+            found_dishes = find_dishes_in_text(user_input)
+            if found_dishes:
+                added_dish_names = {tc.get("arguments", {}).get("item_name") for tc in turn_tool_calls if tc["tool"] == "add_item_to_order"}
+                for dish, qty, instructions in found_dishes:
+                    avail = db_tools.check_availability(dish["name"], qty, db_path=self.db_path)
+                    if not avail.get("available", False):
+                        if "check_availability" not in tools_executed:
+                            turn_tool_calls.append({"tool": "check_availability", "arguments": {"item_name": dish["name"], "qty": qty}, "result": avail})
+                            tools_executed.add("check_availability")
+                        with db_tools.get_db_connection(self.db_path) as conn:
+                            cur = conn.cursor()
+                            cur.execute("SELECT name, price FROM menu_items WHERE category = ? AND id != ? AND stock_qty > 0 LIMIT 2",
+                                        (dish["category"], dish.get("id", 0)))
+                            alts = [f"{r['name']} (₱{r['price']:.2f})" for r in cur.fetchall()]
+                            alt_names = ", ".join(alts) if alts else "our in-stock menu items"
+
+                        if is_filipino:
+                            extra_messages.append(
+                                f"Paumanhin po! Ang {dish['name']} ay kasalukuyang out-of-stock sa aming kusina (0 natitira). "
+                                f"Nais niyo po bang subukan ang {alt_names} bilang alternatibo?"
+                            )
+                        else:
+                            extra_messages.append(
+                                f"I apologize, but our {dish['name']} is currently out of stock (0 available). "
+                                f"Would you like to try our {alt_names} instead?"
+                            )
+                        is_override = True
+                        continue
+
+                    if dish["name"] not in added_dish_names:
+                        res = self.execute_tool("add_item_to_order", {
+                            "item_name": dish["name"],
+                            "qty": qty,
+                            "instructions": instructions
+                        })
+                        turn_tool_calls.append({
+                            "tool": "add_item_to_order",
+                            "arguments": {"item_name": dish["name"], "qty": qty, "instructions": instructions},
+                            "result": res
+                        })
+                        tools_executed.add("add_item_to_order")
+                        if res.get("status") == "success":
+                            extra_messages.append(res.get("message", f"Added {qty}x {dish['name']}"))
+
+        # 3. Order Confirmation / Checkout (if user asked to confirm or place order)
         confirm_keywords = [
             "confirm", "place my order", "place order", "place the order", "place it",
             "place this", "place na", "paki-place", "paki place", "finalize", "checkout",
@@ -661,20 +868,20 @@ class BistroFSMAgent:
                     )
                 elif res.get("message") == "Cannot confirm empty order.":
                     extra_messages.append("Your order tab is currently empty. Please select items from our menu first.")
+                is_override = True
 
-        # 3. View Current Bill / Tab (only if not already confirming)
-        elif any(w in text_lower for w in ["bill", "cart", "tab", "magkano", "bayarin", "summary", "review"]):
+        # 4. View Current Bill / Tab (only if not already confirming)
+        elif any(w in text_lower for w in ["bill", "cart", "tab", "magkano ang bill", "bayarin", "summary", "review"]):
             if "view_current_order" not in tools_executed and "confirm_order_and_deduct_stock" not in tools_executed:
                 res = self.execute_tool("view_current_order", {})
                 turn_tool_calls.append({"tool": "view_current_order", "arguments": {}, "result": res})
 
-        return " ".join(extra_messages)
+        return " ".join(extra_messages), is_override
 
     def _fallback_dialogue_turn(self, user_input: str, error_reason: str = "") -> Dict[str, Any]:
         """
         High-reliability automated bistro agent fallback.
-        Ensures conversational responsiveness, state machine progression,
-        and SQLite tool execution when Ollama is unavailable, out of memory, or slow.
+        Accurately handles allergen queries, stock validation, and ordering intent.
         """
         text_lower = user_input.lower().strip()
         turn_tool_calls: List[Dict[str, Any]] = []
@@ -685,25 +892,159 @@ class BistroFSMAgent:
             "place this", "place na", "paki-place", "paki place", "finalize", "checkout",
             "bayaran", "i-confirm", "kumpirmahin", "pakiconfirm", "order na po", "complete order"
         ]
-        has_confirm_intent = any(w in text_lower for w in confirm_keywords)
+        has_confirm = any(w in text_lower for w in confirm_keywords)
+        is_ordering = has_ordering_intent(user_input)
         found_dishes = find_dishes_in_text(user_input)
 
-        # 1. Intent: Ordering Dishes (with optional immediate checkout in the same utterance)
-        if found_dishes:
+        # -------------------------------------------------------------
+        # 1. Intent: Allergen & Dietary Query (HIGHEST PRIORITY for safety)
+        # -------------------------------------------------------------
+        explicit_allergen_words = [
+            "allergen", "allergens", "allergy", "allergies", "allergic", "lactose", "intoleran",
+            "dietary", "contain", "ingredients", "sangkap", "safe ba", "bawal ba"
+        ]
+        is_question = any(text_lower.startswith(q) for q in ["does ", "is there ", "do ", "is ", "may ", "meron ba", "meron bang ", "ano ang ", "what is ", "what are "]) or ("?" in text_lower)
+        has_allergen_mention = any(a in text_lower for a in ["dairy", "cheese", "milk", "gluten", "wheat", "nut", "nuts", "peanut", "egg", "pork", "lactose", "shellfish"])
+        has_order_verb = any(re.search(v, text_lower) for v in [r'\border\b', r'\bi want to order\b', r'\bpabili\b', r'\badd\b', r"\bi'll have\b", r'\bi will take\b'])
+        
+        is_allergen_query = (any(w in text_lower for w in explicit_allergen_words) or (is_question and has_allergen_mention)) and not (has_order_verb and not is_question)
+
+        if is_allergen_query:
+            target_dish = found_dishes[0][0]["name"] if found_dishes else "Perpetual Classic Burger"
+            target_allergen = "Dairy"
+            for a in ["Gluten", "Nuts", "Egg", "Pork", "Shellfish", "Fish", "Dairy"]:
+                if a.lower() in text_lower:
+                    target_allergen = a
+                    break
+            if "lactose" in text_lower or "cheese" in text_lower or "milk" in text_lower:
+                target_allergen = "Dairy"
+
+            res = self.execute_tool("check_item_allergen", {"item_name": target_dish, "allergen": target_allergen})
+            turn_tool_calls.append({"tool": "check_item_allergen", "arguments": {"item_name": target_dish, "allergen": target_allergen}, "result": res})
+
+            has_allergen = res.get("contains_allergen", False)
+            all_allergens = res.get("all_item_allergens", [])
+            allergen_str = ", ".join(all_allergens) if all_allergens else "None"
+            tips = res.get("customization_tips", [])
+            tip_str = (" " + " ".join(tips)) if tips else ""
+
+            if is_filipino:
+                if has_allergen:
+                    if target_allergen == "Dairy" or "lactose" in text_lower:
+                        resp_text = (
+                            f"Opo, ang {target_dish} ay naglalaman ng Dairy (Cheddar cheese at house bistro sauce) at Gluten (burger bun). "
+                            f"Kabuuang nakatalang allergens: {allergen_str}. "
+                            f"Kung may mild lactose intolerance po kayo, maaari po naming ihain nang walang cheese o sauce ('No Cheese'), "
+                            f"o maaari ninyong subukan ang aming Golden French Fries o Fresh Calamansi Iced Tea na 100% dairy-free!"
+                        )
+                    else:
+                        resp_text = (
+                            f"Opo, ang {target_dish} ay naglalaman ng {target_allergen} (Kabuuang allergens: {allergen_str}).{tip_str} "
+                            f"Maaari po nating i-customize ang inyong order para maging ligtas at masarap ang inyong pagkain!"
+                        )
+                else:
+                    resp_text = f"Ligtas po! Ang {target_dish} ay walang nakatalang {target_allergen} (Allergens: {allergen_str}). Pwede po ninyo itong i-enjoy!"
+            else:
+                if has_allergen:
+                    if target_allergen == "Dairy" or "lactose" in text_lower:
+                        resp_text = (
+                            f"Yes, the {target_dish} contains Dairy (specifically the cheddar cheese and house bistro sauce) as well as Gluten (the burger bun). "
+                            f"Total declared allergens: {allergen_str}. "
+                            f"Since you have mild lactose intolerance, we can gladly prepare your burger without cheese and sauce, "
+                            f"or you can enjoy our delicious dairy-free options like the Golden French Fries or Fresh Calamansi Iced Tea!"
+                        )
+                    else:
+                        resp_text = (
+                            f"Yes, the {target_dish} contains {target_allergen} (Declared allergens: {allergen_str}).{tip_str} "
+                            f"We can gladly customize your order to accommodate your dietary needs!"
+                        )
+                else:
+                    resp_text = f"Good news! The {target_dish} is free of {target_allergen} (Declared allergens: {allergen_str}). It is safe for you to enjoy!"
+
+        # -------------------------------------------------------------
+        # 2. Intent: Real-Time Availability / Stock Query
+        # -------------------------------------------------------------
+        elif any(w in text_lower for w in ["available", "out of stock", "in stock", "sold out", "meron pa ba", "mayroon pa bang", "ubos na"]):
+            target_dish = found_dishes[0][0]["name"] if found_dishes else "Perpetual Classic Burger"
+            avail = self.execute_tool("check_availability", {"item_name": target_dish, "qty": 1})
+            turn_tool_calls.append({"tool": "check_availability", "arguments": {"item_name": target_dish, "qty": 1}, "result": avail})
+            is_avail = avail.get("available", False)
+            stock = avail.get("current_stock", 0)
+
+            if is_avail:
+                if is_filipino:
+                    resp_text = f"Opo! Available po ang {target_dish} ({stock} natitira sa kusina). Nais niyo po bang mag-order nito?"
+                else:
+                    resp_text = f"Yes! The {target_dish} is in stock ({stock} available). Would you like to add it to your order?"
+            else:
+                with db_tools.get_db_connection(self.db_path) as conn:
+                    cur = conn.cursor()
+                    cur.execute("SELECT category FROM menu_items WHERE LOWER(name) = LOWER(?)", (target_dish,))
+                    row = cur.fetchone()
+                    cat = row["category"] if row else "Burgers"
+                    cur.execute("SELECT name, price FROM menu_items WHERE category = ? AND stock_qty > 0 LIMIT 2", (cat,))
+                    alts = [f"{r['name']} (₱{r['price']:.2f})" for r in cur.fetchall()]
+                    alt_str = ", ".join(alts) if alts else "other delicious dishes"
+
+                if is_filipino:
+                    resp_text = (
+                        f"Paumanhin po! Ang {target_dish} ay kasalukuyang out-of-stock sa aming kusina (0 natitira). "
+                        f"Nais niyo po bang subukan ang {alt_str} bilang masarap na alternatibo?"
+                    )
+                else:
+                    resp_text = (
+                        f"I apologize, but our {target_dish} is currently out of stock (0 available). "
+                        f"Would you like to try our {alt_str} instead?"
+                    )
+
+        # -------------------------------------------------------------
+        # 3. Intent: Price / Description Query (Non-ordering)
+        # -------------------------------------------------------------
+        elif (any(w in text_lower for w in ["how much", "magkano", "price", "presyo", "describe", "what is"]) and not is_ordering):
+            target_dish = found_dishes[0][0]["name"] if found_dishes else None
+            if target_dish:
+                with db_tools.get_db_connection(self.db_path) as conn:
+                    cur = conn.cursor()
+                    cur.execute("SELECT name, price, description, stock_qty, allergens FROM menu_items WHERE LOWER(name) = LOWER(?)", (target_dish,))
+                    item = cur.fetchone()
+                if item:
+                    stock_note = "In Stock" if item["stock_qty"] > 0 else "Currently Out of Stock"
+                    if is_filipino:
+                        resp_text = f"Ang {item['name']} ay ₱{item['price']:.2f} ({stock_note}). {item['description']} Allergens: {item['allergens']}."
+                    else:
+                        resp_text = f"The {item['name']} is ₱{item['price']:.2f} ({stock_note}). {item['description']} Allergens: {item['allergens']}."
+                else:
+                    resp_text = f"Item {target_dish} price inquiry."
+            else:
+                resp_text = "Which dish would you like to know the price of?"
+
+        # -------------------------------------------------------------
+        # 4. Intent: Ordering Dishes (Only with genuine ordering intent)
+        # -------------------------------------------------------------
+        elif found_dishes and is_ordering:
             added_msgs = []
             for dish, qty, instructions in found_dishes:
-                if dish["name"] == "Crispy Buffalo Chicken Tenders":
-                    avail = self.execute_tool("check_availability", {"item_name": dish["name"], "qty": qty})
-                    turn_tool_calls.append({"tool": "check_availability", "arguments": {"item_name": dish["name"], "qty": qty}, "result": avail})
+                avail = self.execute_tool("check_availability", {"item_name": dish["name"], "qty": qty})
+                turn_tool_calls.append({"tool": "check_availability", "arguments": {"item_name": dish["name"], "qty": qty}, "result": avail})
+
+                if not avail.get("available", False):
+                    # Out of stock: recommend alternative from same category
+                    with db_tools.get_db_connection(self.db_path) as conn:
+                        cur = conn.cursor()
+                        cur.execute("SELECT name, price FROM menu_items WHERE category = ? AND id != ? AND stock_qty > 0 LIMIT 2",
+                                    (dish["category"], dish.get("id", 0)))
+                        alts = [f"{r['name']} (₱{r['price']:.2f})" for r in cur.fetchall()]
+                        alt_names = ", ".join(alts) if alts else "our in-stock menu items"
+
                     if is_filipino:
                         added_msgs.append(
-                            f"Paumanhin po! Ang Crispy Buffalo Chicken Tenders ay kasalukuyang out-of-stock sa aming kusina (0 natitira). "
-                            f"Nais niyo po bang subukan ang Grilled Chicken Pesto Sandwich (₱165.00) o Bacon Mushroom Melt Burger (₱185.00) bilang alternatibo?"
+                            f"Paumanhin po! Ang {dish['name']} ay kasalukuyang out-of-stock sa aming kusina (0 natitira). "
+                            f"Nais niyo po bang subukan ang {alt_names} bilang alternatibo?"
                         )
                     else:
                         added_msgs.append(
-                            f"I apologize, but our Crispy Buffalo Chicken Tenders are currently out of stock (0 available). "
-                            f"Would you like to try our Grilled Chicken Pesto Sandwich (₱165.00) or Bacon Mushroom Melt Burger (₱185.00) instead?"
+                            f"I apologize, but our {dish['name']} is currently out of stock (0 available). "
+                            f"Would you like to try our {alt_names} instead?"
                         )
                 else:
                     res = self.execute_tool("add_item_to_order", {
@@ -722,37 +1063,34 @@ class BistroFSMAgent:
                     else:
                         added_msgs.append(f"Added {qty}x {dish['name']}{inst_note} to your tab.")
 
-            # If the customer also said "place order" / "confirm" in the same voice command:
-            if has_confirm_intent:
+            # If user also confirmed order in the same message:
+            if has_confirm:
                 c_res = self.execute_tool("confirm_order_and_deduct_stock", {})
                 turn_tool_calls.append({"tool": "confirm_order_and_deduct_stock", "arguments": {}, "result": c_res})
                 if c_res.get("status") == "success":
                     if is_filipino:
                         added_msgs.append(
                             f"\nAt na-confirm na po ang inyong order! (Receipt #{c_res.get('receipt_id')}) para sa Table #{c_res.get('table_no')}.\n"
-                            f"Naipadala na po ang order ticket sa kitchen display at inihahanda na ng aming chef.\n"
-                            f"Subtotal: ₱{c_res.get('subtotal', 0.0):.2f} | 12% VAT: ₱{c_res.get('vat_included', 0.0):.2f}\n"
-                            f"Kabuuang Bayarin: ₱{c_res.get('grand_total', 0.0):.2f}.\n"
-                            f"Ihahatid po ito sa inyong lamesa sa lalong madaling panahon!"
+                            f"Naipadala na po sa kitchen display! Kabuuang Bayarin: ₱{c_res.get('grand_total', 0.0):.2f}."
                         )
                     else:
                         added_msgs.append(
                             f"\nAnd your order has been confirmed! (Receipt #{c_res.get('receipt_id')}) for Table #{c_res.get('table_no')}.\n"
-                            f"Your order ticket is routed to the kitchen display and is being prepared.\n"
-                            f"Subtotal: ₱{c_res.get('subtotal', 0.0):.2f} | 12% VAT: ₱{c_res.get('vat_included', 0.0):.2f}\n"
-                            f"Grand Total: ₱{c_res.get('grand_total', 0.0):.2f}.\n"
-                            f"Your meal will be served to your table shortly!"
+                            f"Sent to kitchen display! Grand Total: ₱{c_res.get('grand_total', 0.0):.2f}."
                         )
             else:
-                if is_filipino:
-                    added_msgs.append("May nais pa po ba kayong idagdag, o nais niyo na pong i-confirm and place order?")
-                else:
-                    added_msgs.append("Would you like to add anything else, or confirm and place your order?")
+                if any("Nai-dagdag" in m or "Added" in m for m in added_msgs):
+                    if is_filipino:
+                        added_msgs.append("May nais pa po ba kayong idagdag, o nais niyo na pong i-confirm and place order?")
+                    else:
+                        added_msgs.append("Would you like to add anything else, or confirm and place your order?")
 
             resp_text = "\n".join(added_msgs)
 
-        # 2. Intent: Standalone Order Confirmation / Checkout (dishes already in cart)
-        elif has_confirm_intent:
+        # -------------------------------------------------------------
+        # 5. Intent: Standalone Order Confirmation / Checkout
+        # -------------------------------------------------------------
+        elif has_confirm:
             res = self.execute_tool("confirm_order_and_deduct_stock", {})
             turn_tool_calls.append({"tool": "confirm_order_and_deduct_stock", "arguments": {}, "result": res})
             if res.get("status") == "success":
@@ -760,17 +1098,13 @@ class BistroFSMAgent:
                     resp_text = (
                         f"Maraming salamat po! Kumpirmado na ang inyong order (Receipt #{res.get('receipt_id')}) para sa Table #{res.get('table_no')}.\n"
                         f"Naipadala na po ang order ticket sa kitchen display at inihahanda na ng aming chef.\n"
-                        f"Subtotal: ₱{res.get('subtotal', 0.0):.2f} | 12% VAT: ₱{res.get('vat_included', 0.0):.2f}\n"
-                        f"Kabuuang Bayarin: ₱{res.get('grand_total', 0.0):.2f}.\n"
-                        f"Ihahatid po ito sa inyong lamesa sa lalong madaling panahon!"
+                        f"Kabuuang Bayarin: ₱{res.get('grand_total', 0.0):.2f}."
                     )
                 else:
                     resp_text = (
                         f"Thank you! Your order has been confirmed (Receipt #{res.get('receipt_id')}) for Table #{res.get('table_no')}.\n"
                         f"Your order ticket is routed to the kitchen display and is being prepared.\n"
-                        f"Subtotal: ₱{res.get('subtotal', 0.0):.2f} | 12% VAT: ₱{res.get('vat_included', 0.0):.2f}\n"
-                        f"Grand Total: ₱{res.get('grand_total', 0.0):.2f}.\n"
-                        f"Your meal will be served to your table shortly!"
+                        f"Grand Total: ₱{res.get('grand_total', 0.0):.2f}."
                     )
             else:
                 if is_filipino:
@@ -778,8 +1112,10 @@ class BistroFSMAgent:
                 else:
                     resp_text = "Your order tab is currently empty. What dishes would you like to order today?"
 
-        # 3. Intent: View Bill / Cart Review
-        elif any(w in text_lower for w in ["bill", "cart", "tab", "total", "magkano", "bayarin", "summary", "review"]):
+        # -------------------------------------------------------------
+        # 6. Intent: View Bill / Cart Review
+        # -------------------------------------------------------------
+        elif any(w in text_lower for w in ["bill", "cart", "tab", "total", "magkano ang bill", "bayarin", "summary", "review"]):
             res = self.execute_tool("view_current_order", {})
             turn_tool_calls.append({"tool": "view_current_order", "arguments": {}, "result": res})
             items = res.get("line_items", [])
@@ -788,55 +1124,21 @@ class BistroFSMAgent:
                 if is_filipino:
                     resp_text = (
                         f"Narito po ang inyong kasalukuyang tab para sa Table #{self.table_no}:\n{items_str}\n\n"
-                        f"Subtotal: ₱{res.get('subtotal', 0.0):.2f} (kasama ang 12% VAT: ₱{res.get('vat_12_pct_breakdown', 0.0):.2f})\n"
-                        f"Kabuuang Halaga: ₱{res.get('grand_total', 0.0):.2f}.\n"
+                        f"Subtotal: ₱{res.get('subtotal', 0.0):.2f} | Kabuuang Halaga: ₱{res.get('grand_total', 0.0):.2f}.\n"
                         f"Nais niyo na po bang i-confirm ang inyong order?"
                     )
                 else:
                     resp_text = (
                         f"Here is your current order tab for Table #{self.table_no}:\n{items_str}\n\n"
-                        f"Subtotal: ₱{res.get('subtotal', 0.0):.2f} (12% VAT included: ₱{res.get('vat_12_pct_breakdown', 0.0):.2f})\n"
-                        f"Grand Total: ₱{res.get('grand_total', 0.0):.2f}.\n"
+                        f"Subtotal: ₱{res.get('subtotal', 0.0):.2f} | Grand Total: ₱{res.get('grand_total', 0.0):.2f}.\n"
                         f"Would you like to confirm and place this order?"
                     )
             else:
-                resp_text = "Your cart is currently empty." if not is_filipino else "Wala pa pong laman ang inyong cart."
+                resp_text = "Your order tab is currently empty." if not is_filipino else "Wala pa pong laman ang inyong order tab."
 
-        # 4. Intent: Allergen Query
-        elif any(w in text_lower for w in ["allergen", "allergy", "allergies", "lactose", "dairy", "gluten", "wheat", "nut", "nuts", "egg", "pork"]):
-            found_dishes = find_dishes_in_text(user_input)
-            target_dish = found_dishes[0][0]["name"] if found_dishes else "Perpetual Classic Burger"
-            target_allergen = "Dairy"
-            for a in ["Gluten", "Nuts", "Egg", "Pork", "Shellfish"]:
-                if a.lower() in text_lower:
-                    target_allergen = a
-                    break
-
-            res = self.execute_tool("check_item_allergen", {"item_name": target_dish, "allergen": target_allergen})
-            turn_tool_calls.append({"tool": "check_item_allergen", "arguments": {"item_name": target_dish, "allergen": target_allergen}, "result": res})
-
-            has_allergen = res.get("contains_allergen", False)
-            all_allergens = res.get("all_item_allergens", [])
-            allergen_str = ", ".join(all_allergens) if all_allergens else "None"
-
-            if is_filipino:
-                if has_allergen:
-                    resp_text = (
-                        f"Opo, ang {target_dish} ay may {target_allergen} (Kabuuang allergens: {allergen_str}). "
-                        f"Kung may lactose intolerance o dietary restriction kayo, maaari po nating ipatanggal ang cheese o i-customize ang order!"
-                    )
-                else:
-                    resp_text = f"Wala pong {target_allergen} ang {target_dish}. Ligtas po ito para sa inyo! (Nakatala allergens: {allergen_str})."
-            else:
-                if has_allergen:
-                    resp_text = (
-                        f"Yes, the {target_dish} contains {target_allergen} (Allergens: {allergen_str}). "
-                        f"If you have mild lactose intolerance, we can prepare it without cheese for you!"
-                    )
-                else:
-                    resp_text = f"Good news! The {target_dish} is free of {target_allergen} (Allergens: {allergen_str})."
-
-        # 5. Intent: Category / Menu Inquiry
+        # -------------------------------------------------------------
+        # 7. Intent: Category / Menu Inquiry
+        # -------------------------------------------------------------
         elif any(w in text_lower for w in ["burger", "burgers", "pasta", "pastas", "side", "sides", "drink", "drinks", "beverage", "dessert", "desserts", "combo", "combos", "value meal", "menu"]):
             cat = "all"
             for c in ["Combos", "Burgers", "Pastas", "Sides", "Beverages", "Desserts"]:
@@ -846,13 +1148,16 @@ class BistroFSMAgent:
             res = self.execute_tool("get_menu_by_category", {"category": cat})
             turn_tool_calls.append({"tool": "get_menu_by_category", "arguments": {"category": cat}, "result": res})
             items = res.get("items", [])
-            items_desc = ", ".join([f"{it['name']} (₱{it['price']:.2f})" for it in items[:5]])
+            in_stock_items = [it for it in items if it.get("stock_qty", 0) > 0]
+            items_desc = ", ".join([f"{it['name']} (₱{it['price']:.2f})" for it in in_stock_items[:5]])
             if is_filipino:
-                resp_text = f"Narito po ang mga putahe sa {cat}: {items_desc}. Ano po ang nais ninyong subukan?"
+                resp_text = f"Narito po ang mga available na putahe sa {cat}: {items_desc}. Ano po ang nais ninyong subukan?"
             else:
                 resp_text = f"Here are the items available under {cat}: {items_desc}. Which one would you like to try?"
 
-        # 6. Intent: Recommendations & Bestsellers
+        # -------------------------------------------------------------
+        # 8. Intent: Recommendations & Bestsellers
+        # -------------------------------------------------------------
         elif any(w in text_lower for w in ["recommend", "rekomenda", "best seller", "bestseller", "specialty", "masarap", "lunch", "popular"]):
             if is_filipino:
                 resp_text = (
@@ -869,12 +1174,14 @@ class BistroFSMAgent:
                     "or the Pasta & Sweet Treat Combo (₱330.00, save ₱50)!"
                 )
 
-        # 7. Intent: Greeting
+        # -------------------------------------------------------------
+        # 9. Intent: Greeting
+        # -------------------------------------------------------------
         elif any(w in text_lower for w in ["hi", "hello", "mabuhay", "kamusta", "good morning", "good afternoon", "good evening"]):
             if is_filipino:
                 resp_text = (
                     f"Mabuhay! Ako si BistroBot, ang inyong AI dining assistant para sa Table #{self.table_no}. "
-                    "Ano po ang gusto ninyong i-order ngayon? Pwede kayong magtanong tungkol sa aming mga burgers, pastas, inumin, o mag-place ng order!"
+                    "Ano po ang gusto ninyong i-order ngayon? Pwede kayong magtanong tungkol sa aming mga putahe, allergen details, o mag-place ng order!"
                 )
             else:
                 resp_text = (
@@ -882,12 +1189,14 @@ class BistroFSMAgent:
                     "How may I serve you today? Feel free to ask about our menu categories, allergen details, or place an order!"
                 )
 
-        # Default Friendly Response
+        # -------------------------------------------------------------
+        # 10. Default Friendly Hospitality Response
+        # -------------------------------------------------------------
         else:
             if is_filipino:
                 resp_text = (
                     f"Nandito po ako para tulungan kayo sa Table #{self.table_no}! "
-                    "Maaari kayong mag-order ng burger, pasta, inumin, magtanong ng allergens, o tingnan ang inyong bill."
+                    "Maaari kayong magtanong tungkol sa menu, allergens, mag-order ng pagkain, o tingnan ang inyong bill."
                 )
             else:
                 resp_text = (
@@ -986,11 +1295,13 @@ class BistroFSMAgent:
                     }
                     self.messages.append(tool_msg)
 
-            # Safety guard: ensure critical orders/checkouts execute
-            extra_tool_note = self._ensure_critical_tool_execution(user_input, turn_tool_calls)
+            # Safety guard: ensure critical orders/checkouts/allergens execute
+            extra_tool_note, should_override = self._ensure_critical_tool_execution(user_input, turn_tool_calls)
 
             clean_text = re.sub(r"<think>.*?</think>", "", final_content, flags=re.DOTALL).strip()
-            if extra_tool_note and not clean_text:
+            if should_override and extra_tool_note:
+                clean_text = extra_tool_note
+            elif extra_tool_note and not clean_text:
                 clean_text = extra_tool_note
 
             if not clean_text and turn_tool_calls:

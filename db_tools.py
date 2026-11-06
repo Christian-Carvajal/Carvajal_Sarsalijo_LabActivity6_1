@@ -162,6 +162,7 @@ def get_menu_by_category(category: Optional[str] = None, db_path: str = DB_PATH)
 def check_item_allergen(item_name: str, allergen: str, db_path: str = DB_PATH) -> Dict[str, Any]:
     """
     Checks if a menu item contains a specific allergen (e.g., dairy, gluten, nuts, egg, pork, shellfish).
+    Handles common synonyms such as lactose -> dairy, milk -> dairy, wheat -> gluten.
     """
     with get_db_connection(db_path) as conn:
         row = _find_menu_item(item_name, conn)
@@ -170,22 +171,76 @@ def check_item_allergen(item_name: str, allergen: str, db_path: str = DB_PATH) -
                 "status": "not_found",
                 "message": f"Menu item '{item_name}' was not found in Perpetual Bistro catalog.",
                 "contains_allergen": False,
+                "all_item_allergens": [],
             }
 
         allergens_str = (row["allergens"] or "").lower()
         query_allergen = allergen.strip().lower()
-        contains = query_allergen in allergens_str
+
+        # Map common dietary terms & ingredient synonyms
+        allergen_map = {
+            "lactose": "dairy",
+            "milk": "dairy",
+            "cheese": "dairy",
+            "cream": "dairy",
+            "butter": "dairy",
+            "wheat": "gluten",
+            "flour": "gluten",
+            "bun": "gluten",
+            "peanut": "nuts",
+            "peanuts": "nuts",
+            "cashew": "nuts",
+            "almond": "nuts",
+            "bacon": "pork",
+            "ham": "pork",
+            "prawn": "shellfish",
+            "shrimp": "shellfish",
+            "mussel": "shellfish",
+            "squid": "shellfish",
+        }
+        effective_allergen = allergen_map.get(query_allergen, query_allergen)
+        contains = (effective_allergen in allergens_str) or (query_allergen in allergens_str)
+
+        all_allergens = [
+            a.strip() for a in (row["allergens"] or "").split(",")
+            if a.strip() and a.strip().lower() != "none"
+        ]
+
+        # Dietary customization suggestions
+        customization_tips = []
+        if contains:
+            if effective_allergen == "dairy":
+                if "Burger" in row["name"] or "Sandwich" in row["name"]:
+                    customization_tips.append("Ask for 'No Cheese' or 'No Sauce' to eliminate dairy.")
+                elif "Coffee" in row["name"] or "Macchiato" in row["name"]:
+                    customization_tips.append("Can be served black as Classic Brewed Coffee without milk.")
+                elif "Fries" in row["name"]:
+                    customization_tips.append("Try Golden French Fries which are naturally 100% dairy-free.")
+            elif effective_allergen == "gluten":
+                customization_tips.append("Gluten-free dining: enjoy Golden French Fries or Calamansi Iced Tea.")
+
+        # Find safe alternatives in same or different categories
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT name, price, category FROM menu_items WHERE stock_qty > 0 AND LOWER(allergens) NOT LIKE ? LIMIT 3",
+            (f"%{effective_allergen}%",)
+        )
+        safe_alts = [dict(r) for r in cursor.fetchall()]
 
         return {
             "status": "success",
             "item_name": row["name"],
             "allergen_queried": allergen,
+            "effective_allergen": effective_allergen,
             "declared_allergens": row["allergens"],
+            "all_item_allergens": all_allergens,
             "contains_allergen": contains,
+            "customization_tips": customization_tips,
+            "safe_alternatives": safe_alts,
             "warning": (
-                f"Caution: {row['name']} CONTAINS {allergen.upper()} ({row['allergens']})."
+                f"Caution: {row['name']} CONTAINS {effective_allergen.upper()} ({row['allergens']})."
                 if contains
-                else f"Safe: {row['name']} does NOT list {allergen} in its recorded allergen profile."
+                else f"Safe: {row['name']} does NOT list {allergen} in its recorded allergen profile ({row['allergens'] or 'None'})."
             ),
         }
 
