@@ -372,6 +372,22 @@ def add_item_to_order(session_id: str, item_name: str, qty: int = 1, instruction
         }
 
 
+def clear_order(session_id: str, db_path: str = DB_PATH) -> Dict[str, Any]:
+    """
+    Clears all line items from the customer's active order tab.
+    """
+    with get_db_connection(db_path) as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM order_line_items WHERE session_id = ?", (session_id,))
+        conn.commit()
+        return {
+            "status": "success",
+            "message": "Your order tab has been cleared.",
+            "total_items_in_cart": 0,
+            "grand_total": 0.0,
+        }
+
+
 def remove_item_from_order(session_id: str, item_name: str, db_path: str = DB_PATH) -> Dict[str, Any]:
     """
     Safely removes an item or line item from the active table order.

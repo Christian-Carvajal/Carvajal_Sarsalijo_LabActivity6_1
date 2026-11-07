@@ -2840,6 +2840,466 @@
             background: #2563EB;
             color: #FFFFFF;
         }
+
+        /* =====================================================================
+           AI WAITER VOICE FLOATER DOCK & EXPANDABLE DRAWER
+           ===================================================================== */
+        .kiosk-voice-floater-dock {
+            position: fixed;
+            bottom: 24px;
+            right: 370px;
+            z-index: 995;
+            background: linear-gradient(135deg, rgba(123, 17, 19, 0.96), rgba(82, 9, 11, 0.98));
+            border: 2px solid var(--uphsd-gold);
+            border-radius: var(--radius-xl);
+            box-shadow: 0 10px 32px rgba(123, 17, 19, 0.45), 0 0 16px rgba(212, 175, 55, 0.35);
+            backdrop-filter: blur(14px);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 16px;
+            color: #FFFFFF;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: floatInUp 0.4s ease-out;
+        }
+
+        @keyframes floatInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .floater-avatar-wrap {
+            position: relative;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #D4AF37, #B8860B);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            box-shadow: 0 4px 12px rgba(212, 175, 55, 0.4);
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .floater-online-dot {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #10B981;
+            border: 2px solid #52090B;
+            box-shadow: 0 0 8px #10B981;
+        }
+
+        .floater-info {
+            display: flex;
+            flex-direction: column;
+            cursor: pointer;
+        }
+
+        .floater-title {
+            font-size: 13px;
+            font-weight: 800;
+            color: #FFFDF0;
+            letter-spacing: 0.3px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .floater-desc {
+            font-size: 11px;
+            color: rgba(255, 253, 240, 0.85);
+        }
+
+        .floater-chips-cluster {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .floater-cmd-chip {
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(212, 175, 55, 0.4);
+            color: #FFFDF0;
+            padding: 5px 10px;
+            border-radius: var(--radius-pill);
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .floater-cmd-chip:hover {
+            background: var(--uphsd-gold);
+            color: #52090B;
+            border-color: #FFFFFF;
+            transform: translateY(-2px);
+        }
+
+        .btn-floater-mic {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #DC2626, #991B1B);
+            border: 2px solid #FCA5A5;
+            color: #FFFFFF;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(220, 38, 38, 0.5);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .btn-floater-mic:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(220, 38, 38, 0.7);
+        }
+
+        .btn-floater-mic.listening {
+            background: #EF4444;
+            animation: floaterMicPulse 1.2s infinite;
+            border-color: #FEE2E2;
+        }
+
+        @keyframes floaterMicPulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            50% { transform: scale(1.12); box-shadow: 0 0 0 14px rgba(239, 68, 68, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        .btn-floater-toggle {
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            color: #FFFFFF;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .btn-floater-toggle:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: scale(1.05);
+        }
+
+        /* Expandable Floater Drawer */
+        .floater-drawer-card {
+            position: fixed;
+            bottom: 90px;
+            right: 370px;
+            width: 380px;
+            max-width: calc(100vw - 32px);
+            background: #FFFFFF;
+            border: 2px solid var(--uphsd-gold);
+            border-radius: var(--radius-lg);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35), 0 0 24px rgba(212, 175, 55, 0.25);
+            z-index: 996;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            animation: drawerSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .floater-drawer-card.open {
+            display: flex;
+        }
+
+        @keyframes drawerSlideUp {
+            from { opacity: 0; transform: translateY(24px) scale(0.96); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .drawer-header {
+            background: linear-gradient(135deg, #7B1113, #52090B);
+            color: #FFFFFF;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 2px solid var(--uphsd-gold);
+        }
+
+        .drawer-header-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .drawer-header-title {
+            font-size: 14px;
+            font-weight: 800;
+            color: #FFFDF0;
+            letter-spacing: 0.3px;
+        }
+
+        .drawer-header-sub {
+            font-size: 11px;
+            color: rgba(255, 253, 240, 0.85);
+        }
+
+        .drawer-body {
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: 480px;
+            overflow-y: auto;
+        }
+
+        /* Soundwave equalizer animation */
+        .voice-wave-container {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            height: 32px;
+            background: #FEF2F2;
+            border-radius: var(--radius-sm);
+            padding: 0 12px;
+        }
+
+        .voice-wave-container.active {
+            display: flex;
+        }
+
+        .voice-wave-bar {
+            width: 4px;
+            background: #EF4444;
+            border-radius: 2px;
+            animation: waveBounce 0.8s ease-in-out infinite alternate;
+        }
+
+        .voice-wave-bar:nth-child(1) { height: 10px; animation-delay: 0.1s; }
+        .voice-wave-bar:nth-child(2) { height: 22px; animation-delay: 0.25s; }
+        .voice-wave-bar:nth-child(3) { height: 28px; animation-delay: 0.4s; }
+        .voice-wave-bar:nth-child(4) { height: 16px; animation-delay: 0.15s; }
+        .voice-wave-bar:nth-child(5) { height: 8px; animation-delay: 0.3s; }
+
+        @keyframes waveBounce {
+            0% { transform: scaleY(0.4); }
+            100% { transform: scaleY(1.4); }
+        }
+
+        /* Real-time transcript display */
+        .drawer-transcript-box {
+            background: #F8FAFC;
+            border: 1.5px dashed #CBD5E1;
+            border-radius: var(--radius-md);
+            padding: 12px 14px;
+            min-height: 56px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .drawer-transcript-box.listening {
+            border-color: #EF4444;
+            background: #FEF2F2;
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+        }
+
+        .transcript-label {
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .transcript-text {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            line-height: 1.4;
+        }
+
+        .transcript-interim {
+            color: #94A3B8;
+            font-style: italic;
+        }
+
+        /* Feed for recent voice exchanges */
+        .drawer-feed-box {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 160px;
+            overflow-y: auto;
+        }
+
+        .drawer-bubble-customer {
+            align-self: flex-end;
+            background: var(--uphsd-maroon);
+            color: #FFFFFF;
+            padding: 8px 12px;
+            border-radius: 12px 12px 2px 12px;
+            font-size: 12px;
+            max-width: 85%;
+        }
+
+        .drawer-bubble-waiter {
+            align-self: flex-start;
+            background: #F1F5F9;
+            color: #1E293B;
+            border-left: 3px solid var(--uphsd-gold);
+            padding: 8px 12px;
+            border-radius: 2px 12px 12px 12px;
+            font-size: 12px;
+            max-width: 90%;
+            line-height: 1.4;
+        }
+
+        .drawer-bubble-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 4px;
+            font-size: 10px;
+            font-weight: 800;
+            background: #FEF3C7;
+            color: #92400E;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        /* Quick Voice Action Chips inside Drawer */
+        .drawer-chips-wrap {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .drawer-chip-btn {
+            background: #EFF6FF;
+            border: 1px solid #BFDBFE;
+            color: #1E40AF;
+            padding: 6px 10px;
+            border-radius: var(--radius-pill);
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .drawer-chip-btn:hover {
+            background: #2563EB;
+            color: #FFFFFF;
+            border-color: #2563EB;
+            transform: translateY(-1px);
+        }
+
+        .drawer-chip-checkout {
+            background: #DCFCE7;
+            border-color: #86EFAC;
+            color: #166534;
+        }
+        .drawer-chip-checkout:hover {
+            background: #16A34A;
+            color: #FFFFFF;
+            border-color: #16A34A;
+        }
+
+        .drawer-chip-clear {
+            background: #FEE2E2;
+            border-color: #FECACA;
+            color: #991B1B;
+        }
+        .drawer-chip-clear:hover {
+            background: #DC2626;
+            color: #FFFFFF;
+            border-color: #DC2626;
+        }
+
+        .drawer-mic-hero-cluster {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 8px 0;
+        }
+
+        .btn-drawer-mic-hero {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #DC2626, #991B1B);
+            border: 3px solid var(--uphsd-gold);
+            color: #FFFFFF;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 6px 18px rgba(220, 38, 38, 0.45);
+            transition: all 0.25s;
+        }
+
+        .btn-drawer-mic-hero:hover {
+            transform: scale(1.08);
+        }
+
+        .btn-drawer-mic-hero.listening {
+            background: #EF4444;
+            animation: floaterMicPulse 1.2s infinite;
+        }
+
+        .btn-clear-cart-tab {
+            background: #FEE2E2;
+            border: 1px solid #FECACA;
+            color: #991B1B;
+            padding: 3px 8px;
+            border-radius: var(--radius-pill);
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-left: 6px;
+        }
+
+        .btn-clear-cart-tab:hover {
+            background: #DC2626;
+            color: #FFFFFF;
+        }
+
+        @media (max-width: 1024px) {
+            .kiosk-voice-floater-dock {
+                right: 20px;
+                bottom: 20px;
+            }
+            .floater-drawer-card {
+                right: 20px;
+                bottom: 84px;
+                width: calc(100vw - 40px);
+            }
+        }
+
     </style>
 </head>
 <body>
@@ -3257,6 +3717,118 @@
                         </button>
                     </div>
                 </aside>
+
+                <!-- =============================================================
+                     AI WAITER VOICE FLOATER DOCK (Accessible directly on Menu)
+                     ============================================================= -->
+                <div id="kioskVoiceFloater" class="kiosk-voice-floater-dock" title="BistroBot AI Voice Ordering Assistant">
+                    <div class="floater-avatar-wrap" onclick="toggleFloaterDrawer()" title="Open BistroBot Voice Assistant">
+                        🤖
+                        <span class="floater-online-dot"></span>
+                    </div>
+                    <div class="floater-info" onclick="toggleFloaterDrawer()">
+                        <div class="floater-title">
+                            <span>BistroBot Voice Waiter</span>
+                            <span style="font-size: 9px; padding: 1px 6px; border-radius: 4px; background: rgba(212,175,55,0.3); color: var(--uphsd-gold); font-weight: 800;">MIC ACTIVE</span>
+                        </div>
+                        <div class="floater-desc" id="floaterStatusText">Tap mic to order via voice</div>
+                    </div>
+                    <div class="floater-chips-cluster">
+                        <button class="floater-cmd-chip" onclick="quickFloaterVoiceCommand('Order 1 Perpetual Classic Burger')">⚡ Burger</button>
+                        <button class="floater-cmd-chip" onclick="quickFloaterVoiceCommand('Order 1 Truffle Mushroom Pasta')">⚡ Pasta</button>
+                        <button class="floater-cmd-chip" style="background: rgba(22, 163, 74, 0.3); border-color: #86EFAC;" onclick="quickFloaterVoiceCommand('Checkout and place my order')">💳 Checkout</button>
+                        <button class="floater-cmd-chip" style="background: rgba(220, 38, 38, 0.3); border-color: #FCA5A5;" onclick="quickFloaterVoiceCommand('Clear my order tab')">🧹 Clear</button>
+                    </div>
+                    <button id="floaterMicBtn" class="btn-floater-mic" onclick="toggleFloaterMic()" title="Click to Speak Order / Stop">
+                        🎙️
+                    </button>
+                    <button class="btn-floater-toggle" onclick="toggleFloaterDrawer()" title="Expand Voice Panel">
+                        💬
+                    </button>
+                </div>
+
+                <!-- =============================================================
+                     EXPANDED VOICE ASSISTANT DRAWER (Interactive Floating Drawer)
+                     ============================================================= -->
+                <div id="floaterVoiceDrawer" class="floater-drawer-card">
+                    <div class="drawer-header">
+                        <div class="drawer-header-left">
+                            <span style="font-size: 22px;">🤖</span>
+                            <div>
+                                <div class="drawer-header-title">BistroBot Voice Waiter</div>
+                                <div class="drawer-header-sub">Speak to Order • Table #1 Assistant</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <button class="lang-toggle-btn" style="padding: 3px 8px; font-size: 11px;" onclick="toggleLanguage()">
+                                <span id="floaterLangLabel">🇵🇭 Taglish</span>
+                            </button>
+                            <button class="btn-modal-close" style="color: #FFFFFF; font-size: 18px;" onclick="closeFloaterDrawer()">×</button>
+                        </div>
+                    </div>
+                    <div class="drawer-body">
+                        <!-- Live Equalizer Soundwaves -->
+                        <div id="drawerVoiceWave" class="voice-wave-container">
+                            <div class="voice-wave-bar"></div>
+                            <div class="voice-wave-bar"></div>
+                            <div class="voice-wave-bar"></div>
+                            <div class="voice-wave-bar"></div>
+                            <div class="voice-wave-bar"></div>
+                            <span style="font-size: 11px; font-weight: 700; color: #EF4444; margin-left: 6px;">LISTENING...</span>
+                        </div>
+
+                        <!-- Real-time Live Transcript Box -->
+                        <div id="drawerTranscriptBox" class="drawer-transcript-box">
+                            <div class="transcript-label">
+                                <span>Voice Input Transcript</span>
+                                <span id="drawerMicPill" style="color: var(--uphsd-gold); font-weight: 800;">MIC READY</span>
+                            </div>
+                            <div id="drawerTranscriptText" class="transcript-text">
+                                <span style="color: var(--text-muted);">Tap the red mic below or say: <i>"Order 2 Burgers"</i>, <i>"Checkout"</i>, or <i>"Clear order"</i></span>
+                            </div>
+                        </div>
+
+                        <!-- Hero Mic Button Cluster -->
+                        <div class="drawer-mic-hero-cluster">
+                            <button id="drawerMicHeroBtn" class="btn-drawer-mic-hero" onclick="toggleFloaterMic()" title="Tap to Start/Stop Speaking">
+                                🎙️
+                            </button>
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                <div style="font-weight: 800; font-size: 13px; color: var(--text-primary);">Tap to Speak / Stop</div>
+                                <div style="font-size: 11px; color: var(--text-muted);">Supports English & Taglish</div>
+                            </div>
+                        </div>
+
+                        <!-- Quick Voice Shortcuts Cluster -->
+                        <div style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">⚡ Quick Voice Commands</div>
+                        <div class="drawer-chips-wrap">
+                            <button class="drawer-chip-btn" onclick="quickFloaterVoiceCommand('Order 2 Perpetual Classic Burgers and 1 Loaded Cheese Fries')">
+                                🍔 2x Burgers & Fries
+                            </button>
+                            <button class="drawer-chip-btn" onclick="quickFloaterVoiceCommand('Order 1 Truffle Mushroom Pasta and 1 Fresh Calamansi Iced Tea')">
+                                🍝 Truffle Pasta & Tea
+                            </button>
+                            <button class="drawer-chip-btn drawer-chip-checkout" onclick="quickFloaterVoiceCommand('Checkout and place my order')">
+                                💳 Voice Checkout
+                            </button>
+                            <button class="drawer-chip-btn drawer-chip-clear" onclick="quickFloaterVoiceCommand('Clear my order tab')">
+                                🧹 Clear Order Tab
+                            </button>
+                            <button class="drawer-chip-btn" onclick="quickFloaterVoiceCommand('Does the Perpetual Classic Burger have dairy? I have mild lactose intolerance.')">
+                                ❓ Check Lactose / Dairy
+                            </button>
+                        </div>
+
+                        <!-- Recent Voice Interaction Feed -->
+                        <div style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-top: 4px;">💬 Recent Voice Dialogue</div>
+                        <div id="drawerFeed" class="drawer-feed-box">
+                            <div class="drawer-bubble-waiter">
+                                <div>Mabuhay! I am BistroBot, your tabletop AI waiter. How may I serve you today? Feel free to speak an order, checkout, or clear your tab!</div>
+                                <span class="drawer-bubble-badge">🤖 Voice Active</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
             </div>
         </section>
@@ -5132,6 +5704,288 @@
                 toast.classList.remove('show');
             }, 3000);
         }
+
+        // =====================================================================
+        // AI WAITER VOICE FLOATER CONTROLLER
+        // =====================================================================
+        let floaterSpeechRec = null;
+        let isFloaterListening = false;
+        let floaterSilenceTimer = null;
+        let floaterFinalSpoken = '';
+        let floaterInterimSpoken = '';
+
+        function toggleFloaterDrawer() {
+            const drawer = document.getElementById('floaterVoiceDrawer');
+            if (drawer) {
+                drawer.classList.toggle('open');
+            }
+        }
+
+        function closeFloaterDrawer() {
+            const drawer = document.getElementById('floaterVoiceDrawer');
+            if (drawer) {
+                drawer.classList.remove('open');
+            }
+        }
+
+        function openFloaterDrawer() {
+            const drawer = document.getElementById('floaterVoiceDrawer');
+            if (drawer) {
+                drawer.classList.add('open');
+            }
+        }
+
+        function toggleFloaterMic() {
+            openFloaterDrawer();
+            const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRec) {
+                showToast("Voice recognition is supported in Google Chrome & Edge. Please allow microphone access.", "⚠️");
+                return;
+            }
+
+            if (isFloaterListening) {
+                stopFloaterMic(true);
+                return;
+            }
+
+            startFloaterMic();
+        }
+
+        function startFloaterMic() {
+            const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRec) return;
+
+            try {
+                if (floaterSpeechRec) {
+                    try { floaterSpeechRec.abort(); } catch(e) {}
+                }
+
+                floaterSpeechRec = new SpeechRec();
+                floaterSpeechRec.lang = currentLanguage === 'filipino' ? 'fil-PH' : 'en-US';
+                floaterSpeechRec.interimResults = true;
+                floaterSpeechRec.continuous = true;
+                floaterSpeechRec.maxAlternatives = 1;
+
+                floaterFinalSpoken = '';
+                floaterInterimSpoken = '';
+
+                floaterSpeechRec.onstart = () => {
+                    isFloaterListening = true;
+                    updateFloaterMicUI(true);
+                    const transcriptBox = document.getElementById('drawerTranscriptText');
+                    if (transcriptBox) {
+                        transcriptBox.innerHTML = '<span style="color: #EF4444; font-weight: 700;">🎙️ Listening...</span> Speak your order, e.g. <i>"Order 2 Burgers and Fries"</i>, <i>"Checkout"</i>, or <i>"Clear cart"</i>';
+                    }
+                    showToast("🎙️ BistroBot is listening! Speak your order now.", "⚡");
+                };
+
+                floaterSpeechRec.onresult = (event) => {
+                    let interim = '';
+                    for (let i = event.resultIndex; i < event.results.length; ++i) {
+                        if (event.results[i].isFinal) {
+                            floaterFinalSpoken += ' ' + event.results[i][0].transcript;
+                        } else {
+                            interim += event.results[i][0].transcript;
+                        }
+                    }
+                    floaterInterimSpoken = interim;
+                    const fullSpoken = (floaterFinalSpoken + ' ' + floaterInterimSpoken).trim();
+
+                    const transcriptBox = document.getElementById('drawerTranscriptText');
+                    if (transcriptBox && fullSpoken) {
+                        transcriptBox.innerHTML = `<strong>${floaterFinalSpoken}</strong> <span class="transcript-interim">${floaterInterimSpoken}</span>`;
+                    }
+
+                    // Reset silence timer on every new speech detection (1.8s auto-send)
+                    clearTimeout(floaterSilenceTimer);
+                    if (fullSpoken.length > 0) {
+                        floaterSilenceTimer = setTimeout(() => {
+                            stopFloaterMic(true);
+                        }, 1800);
+                    }
+                };
+
+                floaterSpeechRec.onerror = (event) => {
+                    console.warn("Floater speech recognition error:", event.error);
+                    if (event.error === 'not-allowed') {
+                        showToast("Microphone permission denied. Please allow microphone access in your browser.", "⚠️");
+                    }
+                    isFloaterListening = false;
+                    updateFloaterMicUI(false);
+                };
+
+                floaterSpeechRec.onend = () => {
+                    if (isFloaterListening) {
+                        stopFloaterMic(true);
+                    } else {
+                        updateFloaterMicUI(false);
+                    }
+                };
+
+                floaterSpeechRec.start();
+            } catch(err) {
+                console.error("Failed to start speech recognition:", err);
+                showToast("Could not start microphone. You can tap any quick action chip to speak automatically!", "⚠️");
+            }
+        }
+
+        function stopFloaterMic(andSubmit = false) {
+            clearTimeout(floaterSilenceTimer);
+            isFloaterListening = false;
+            updateFloaterMicUI(false);
+
+            if (floaterSpeechRec) {
+                try { floaterSpeechRec.stop(); } catch(e) {}
+            }
+
+            if (andSubmit) {
+                const spoken = (floaterFinalSpoken + ' ' + floaterInterimSpoken).trim();
+                if (spoken.length > 0) {
+                    executeFloaterVoiceOrder(spoken);
+                } else {
+                    const transcriptBox = document.getElementById('drawerTranscriptText');
+                    if (transcriptBox) {
+                        transcriptBox.innerHTML = '<span style="color: var(--text-muted);">Tap mic to speak your order, checkout, or clear tab...</span>';
+                    }
+                }
+            }
+        }
+
+        function updateFloaterMicUI(listening) {
+            const floaterBtn = document.getElementById('floaterMicBtn');
+            const heroBtn = document.getElementById('drawerMicHeroBtn');
+            const wave = document.getElementById('drawerVoiceWave');
+            const box = document.getElementById('drawerTranscriptBox');
+            const statusText = document.getElementById('floaterStatusText');
+            const micPill = document.getElementById('drawerMicPill');
+
+            if (listening) {
+                if (floaterBtn) floaterBtn.classList.add('listening');
+                if (heroBtn) heroBtn.classList.add('listening');
+                if (wave) wave.classList.add('active');
+                if (box) box.classList.add('listening');
+                if (statusText) statusText.innerText = "Listening to your voice...";
+                if (micPill) micPill.innerText = "LISTENING 🎙️";
+            } else {
+                if (floaterBtn) floaterBtn.classList.remove('listening');
+                if (heroBtn) heroBtn.classList.remove('listening');
+                if (wave) wave.classList.remove('active');
+                if (box) box.classList.remove('listening');
+                if (statusText) statusText.innerText = "Tap mic to order via voice";
+                if (micPill) micPill.innerText = "MIC READY";
+            }
+        }
+
+        async function executeFloaterVoiceOrder(spokenText) {
+            openFloaterDrawer();
+            appendFloaterDialogue('customer', spokenText);
+
+            const transcriptBox = document.getElementById('drawerTranscriptText');
+            if (transcriptBox) {
+                transcriptBox.innerHTML = `<em>Processing: "${spokenText}"...</em>`;
+            }
+
+            try {
+                const res = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        message: spokenText,
+                        table_no: currentTableNo
+                    })
+                });
+
+                const data = await res.json();
+                if (data.assistant_response) {
+                    appendFloaterDialogue('waiter', data.assistant_response, data.tool_calls || []);
+
+                    // 1. Live update Cart
+                    if (data.cart) {
+                        renderCart(data.cart);
+                        highlightCartPanel();
+                    }
+
+                    // 2. Live update FSM badge
+                    if (data.fsm_state) {
+                        updateFsmBadge(data.fsm_state);
+                    }
+
+                    // 3. Play Natural TTS
+                    playTtsAudio(data.speech_text || data.assistant_response);
+
+                    // 4. Check if Checkout / Receipt occurred
+                    const confirmTool = (data.tool_calls || []).find(t => t.tool === 'confirm_order_and_deduct_stock');
+                    if (confirmTool && confirmTool.result && confirmTool.result.status === 'success') {
+                        showReceiptModal(confirmTool.result);
+                        fetchKdsTickets();
+                        showToast(`🎉 Order confirmed! Receipt #${confirmTool.result.receipt_id}`, '⚡');
+                    }
+
+                    // 5. Check if Clear Order occurred
+                    const clearTool = (data.tool_calls || []).find(t => t.tool === 'clear_order');
+                    if (clearTool) {
+                        showToast("Order tab cleared successfully! 🧹", "ℹ️");
+                    }
+
+                    if (transcriptBox) {
+                        transcriptBox.innerHTML = '<span style="color: var(--text-muted);">Tap mic to speak your next order, checkout, or clear tab...</span>';
+                    }
+                }
+            } catch(err) {
+                console.error("Floater voice order error:", err);
+                showToast("Error communicating with AI Waiter. Please try again.", "⚠️");
+                if (transcriptBox) {
+                    transcriptBox.innerHTML = '<span style="color: #EF4444;">Failed to process. Please try again or tap mic.</span>';
+                }
+            }
+        }
+
+        function quickFloaterVoiceCommand(cmdText) {
+            openFloaterDrawer();
+            executeFloaterVoiceOrder(cmdText);
+        }
+
+        function appendFloaterDialogue(sender, text, toolCalls = []) {
+            const feed = document.getElementById('drawerFeed');
+            if (!feed) return;
+
+            const bubble = document.createElement('div');
+            bubble.className = sender === 'customer' ? 'drawer-bubble-customer' : 'drawer-bubble-waiter';
+
+            let html = `<div>${(text || '').replace(/\n/g, '<br>')}</div>`;
+            if (toolCalls && toolCalls.length > 0) {
+                const badges = toolCalls.map(t => `<span class="drawer-bubble-badge">⚙️ ${t.tool}()</span>`).join(' ');
+                html += `<div style="margin-top: 4px;">${badges}</div>`;
+            }
+            bubble.innerHTML = html;
+            feed.appendChild(bubble);
+            feed.scrollTop = feed.scrollHeight;
+        }
+
+        function highlightCartPanel() {
+            const cartPanel = document.querySelector('.kiosk-order-tab');
+            if (cartPanel) {
+                cartPanel.style.transition = 'box-shadow 0.3s ease';
+                cartPanel.style.boxShadow = '0 0 0 3px var(--uphsd-gold), 0 12px 30px rgba(212, 175, 55, 0.4)';
+                setTimeout(() => {
+                    cartPanel.style.boxShadow = '';
+                }, 1200);
+            }
+        }
+
+        async function clearActiveOrder() {
+            try {
+                const res = await fetch('/api/cart/clear', { method: 'POST' });
+                const data = await res.json();
+                renderCart(data.cart);
+                updateFsmBadge(data.fsm_state);
+                showToast("Your order tab has been cleared! 🧹", "ℹ️");
+                appendFloaterDialogue('waiter', "Your order tab has been completely cleared. Your cart is now empty. What would you like to order today?", [{tool: 'clear_order'}]);
+            } catch(e) {
+                console.error("Clear cart error:", e);
+            }
+        }
+
     </script>
 </body>
 </html>

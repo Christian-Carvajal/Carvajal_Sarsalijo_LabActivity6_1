@@ -259,6 +259,20 @@ def remove_cart_item(req: CartUpdateRequest):
     return {"result": res, "cart": cart, "fsm_state": active_agent.state}
 
 
+@app.post("/api/cart/clear")
+def clear_cart_endpoint():
+    """Clears all line items from the active table order cart."""
+    global active_agent
+    res = active_agent.execute_tool("clear_order", {})
+    cart = db_tools.view_current_order(active_agent.session_id)
+    return {
+        "status": "success",
+        "result": res,
+        "cart": cart,
+        "fsm_state": active_agent.state
+    }
+
+
 @app.post("/api/table/switch")
 def switch_table_endpoint(req: TableSwitchRequest):
     """Switches the active dining table without breaking session context."""
