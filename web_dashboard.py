@@ -75,6 +75,13 @@ class CartUpdateRequest(BaseModel):
     qty: int
 
 
+class CartReplaceRequest(BaseModel):
+    old_item: str
+    new_item: str
+    qty: Optional[int] = None
+    instructions: Optional[str] = ""
+
+
 class SessionResetRequest(BaseModel):
     table_no: Optional[int] = 1
 
@@ -255,6 +262,20 @@ def update_cart_item(req: CartUpdateRequest):
 def remove_cart_item(req: CartUpdateRequest):
     """Removes an item from the cart."""
     res = db_tools.remove_item_from_order(active_agent.session_id, req.item_name)
+    cart = db_tools.view_current_order(active_agent.session_id)
+    return {"result": res, "cart": cart, "fsm_state": active_agent.state}
+
+
+@app.post("/api/cart/replace")
+def replace_cart_item(req: CartReplaceRequest):
+    """Replaces an item in the cart with another item."""
+    global active_agent
+    res = active_agent.execute_tool("replace_item_in_order", {
+        "old_item_name": req.old_item,
+        "new_item_name": req.new_item,
+        "qty": req.qty,
+        "instructions": req.instructions or ""
+    })
     cart = db_tools.view_current_order(active_agent.session_id)
     return {"result": res, "cart": cart, "fsm_state": active_agent.state}
 

@@ -388,9 +388,11 @@ def clear_order(session_id: str, db_path: str = DB_PATH) -> Dict[str, Any]:
         }
 
 
-def remove_item_from_order(session_id: str, item_name: str, db_path: str = DB_PATH) -> Dict[str, Any]:
+def remove_item_from_order(session_id: str, item_name: str, qty: Optional[int] = None, db_path: str = DB_PATH) -> Dict[str, Any]:
     """
     Safely removes an item or line item from the active table order.
+    If qty is specified and less than current quantity in cart, decrements quantity.
+    Otherwise, removes the item completely from the order tab.
     """
     with get_db_connection(db_path) as conn:
         cursor = conn.cursor()
@@ -409,19 +411,144 @@ def remove_item_from_order(session_id: str, item_name: str, db_path: str = DB_PA
                 "message": f"'{item['name']}' is not currently in your order cart.",
             }
 
-        cursor.execute(
-            "DELETE FROM order_line_items WHERE session_id = ? AND item_id = ?",
-            (session_id, item["id"]),
-        )
-        conn.commit()
+        total_current_qty = sum(l["quantity"] for l in lines)
+        if qty is not None and 0 < qty < total_current_qty:
+            rem_to_deduct = qty
+            for l in lines:
+                if rem_to_deduct <= 0:
+                    break
+                if l["quantity"] <= rem_to_deduct:
+                    cursor.execute("DELETE FROM order_line_items WHERE id = ?", (l["id"],))
+                    rem_to_deduct -= l["quantity"]
+                else:
+                    new_q = l["quantity"] - rem_to_deduct
+                    cursor.execute("UPDATE order_line_items SET quantity = ? WHERE id = ?", (new_q, l["id"]))
+                    rem_to_deduct = 0
+            conn.commit()
+            msg = f"Removed {qty}x {item['name']} from your order tab."
+        else:
+            cursor.execute(
+                "DELETE FROM order_line_items WHERE session_id = ? AND item_id = ?",
+                (session_id, item["id"]),
+            )
+            conn.commit()
+            msg = f"Removed all instances of {item['name']} from your order."
 
         updated_order = view_current_order(session_id, db_path=db_path)
         return {
             "status": "success",
-            "message": f"Removed all instances of {item['name']} from your order.",
+            "message": msg,
             "removed_item": item["name"],
             "new_order_total": updated_order["grand_total"],
             "remaining_items": updated_order["item_count"],
+            "cart": updated_order,
+        }
+
+
+def replace_item_in_order(
+    session_id: str,
+    old_item_name: str,
+    new_item_name: str,
+    qty: Optional[int] = None,
+    instructions: str = "",
+    db_path: str = DB_PATH
+) -> Dict[str, Any]:
+    """
+    Replaces an item in the active order cart with another item from the menu.
+    Validates that the old item is currently in the cart and the replacement item is in stock.
+    """
+    with get_db_connection(db_path) as conn:
+        cursor = conn.cursor()
+        old_item = _find_menu_item(old_item_name, conn)
+        if not old_item:
+            return {"status": "not_found", "message": f"Original item '{old_item_name}' was not recognized in our menu."}
+
+        cursor.execute(
+            "SELECT id, quantity FROM order_line_items WHERE session_id = ? AND item_id = ?",
+            (session_id, old_item["id"]),
+        )
+        lines = cursor.fetchall()
+        if not lines:
+            return {
+                "status": "not_in_cart",
+                "message": f"'{old_item['name']}' is not currently in your order tab to replace.",
+            }
+
+        total_old_qty = sum(l["quantity"] for l in lines)
+        replace_qty = qty if (qty is not None and qty > 0) else total_old_qty
+
+        new_item = _find_menu_item(new_item_name, conn)
+        if not new_item:
+            return {"status": "not_found", "message": f"Replacement item '{new_item_name}' was not recognized in our menu."}
+
+        if new_item["stock_qty"] < replace_qty:
+            cursor.execute(
+                "SELECT name, price FROM menu_items WHERE category = ? AND id != ? AND stock_qty > 0 LIMIT 2",
+                (new_item["category"], new_item["id"])
+            )
+            alts = [f"{r['name']} (₱{r['price']:.2f})" for r in cursor.fetchall()]
+            alt_str = ", ".join(alts) if alts else "other in-stock items"
+            return {
+                "status": "out_of_stock",
+                "message": f"Cannot replace with {new_item['name']} because it is currently out of stock ({new_item['stock_qty']} available). Would you like to try {alt_str} instead?",
+                "item_name": new_item["name"],
+                "stock_available": new_item["stock_qty"]
+            }
+
+        # Remove or decrement old item
+        if replace_qty < total_old_qty:
+            rem_to_deduct = replace_qty
+            for l in lines:
+                if rem_to_deduct <= 0:
+                    break
+                if l["quantity"] <= rem_to_deduct:
+                    cursor.execute("DELETE FROM order_line_items WHERE id = ?", (l["id"],))
+                    rem_to_deduct -= l["quantity"]
+                else:
+                    new_q = l["quantity"] - rem_to_deduct
+                    cursor.execute("UPDATE order_line_items SET quantity = ? WHERE id = ?", (new_q, l["id"]))
+                    rem_to_deduct = 0
+        else:
+            cursor.execute(
+                "DELETE FROM order_line_items WHERE session_id = ? AND item_id = ?",
+                (session_id, old_item["id"]),
+            )
+
+        # Add replacement item
+        cursor.execute(
+            """
+            SELECT id, quantity FROM order_line_items
+            WHERE session_id = ? AND item_id = ? AND LOWER(special_instructions) = LOWER(?)
+            """,
+            (session_id, new_item["id"], instructions.strip()),
+        )
+        existing_new = cursor.fetchone()
+        if existing_new:
+            cursor.execute(
+                "UPDATE order_line_items SET quantity = quantity + ? WHERE id = ?",
+                (replace_qty, existing_new["id"]),
+            )
+        else:
+            cursor.execute(
+                """
+                INSERT INTO order_line_items (session_id, item_id, quantity, special_instructions, unit_price)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (session_id, new_item["id"], replace_qty, instructions.strip(), new_item["price"]),
+            )
+
+        conn.commit()
+
+        updated_order = view_current_order(session_id, db_path=db_path)
+        inst_str = f" with note: '{instructions}'" if instructions else ""
+        return {
+            "status": "success",
+            "message": f"Replaced {replace_qty}x {old_item['name']} with {replace_qty}x {new_item['name']}{inst_str} in your order tab.",
+            "old_item": old_item["name"],
+            "new_item": new_item["name"],
+            "quantity": replace_qty,
+            "new_order_total": updated_order["grand_total"],
+            "cart": updated_order,
         }
 
 

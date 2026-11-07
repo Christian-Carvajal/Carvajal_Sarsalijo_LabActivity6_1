@@ -134,16 +134,49 @@ BISTRO_TOOLS = [
         "type": "function",
         "function": {
             "name": "remove_item_from_order",
-            "description": "Remove an item completely from the customer's current order.",
+            "description": "Remove an item completely or decrement its quantity from the customer's current order.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "item_name": {
                         "type": "string",
                         "description": "Name of the menu item to remove."
+                    },
+                    "qty": {
+                        "type": "integer",
+                        "description": "Optional quantity to remove. If omitted, removes all."
                     }
                 },
                 "required": ["item_name"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "replace_item_in_order",
+            "description": "Replace an item currently in the customer's order tab with a different item from the menu (e.g. 'Replace Classic Burger with Truffle Mushroom Pasta' or 'Change my burger to spaghetti').",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "old_item_name": {
+                        "type": "string",
+                        "description": "The name of the item currently in the cart to be replaced (e.g. 'Perpetual Classic Burger')."
+                    },
+                    "new_item_name": {
+                        "type": "string",
+                        "description": "The name of the replacement item to add (e.g. 'Truffle Mushroom Pasta')."
+                    },
+                    "qty": {
+                        "type": "integer",
+                        "description": "Optional quantity to replace. If omitted, uses the quantity of the old item."
+                    },
+                    "instructions": {
+                        "type": "string",
+                        "description": "Optional special cooking or dietary instructions for the replacement item."
+                    }
+                },
+                "required": ["old_item_name", "new_item_name"]
             }
         }
     },
@@ -469,6 +502,97 @@ def find_dishes_in_text(text: str) -> List[Tuple[Dict[str, Any], int, str]]:
                 break
     return results
 
+def has_remove_intent(text: str) -> bool:
+    """Determines if the customer intends to remove, delete, or cancel an item from their tab."""
+    text_lower = text.lower().strip()
+    remove_words = [
+        "remove", "cancel", "delete", "take off", "drop", "minus", "subtract",
+        "tanggalin", "alisin", "bawasan", "huwag na", "wag na", "alis"
+    ]
+    return any(re.search(r'\b' + re.escape(w) + r'\b', text_lower) for w in remove_words)
+
+
+def has_replace_intent(text: str) -> bool:
+    """Determines if the customer intends to replace, change, or swap an item in their tab with another dish."""
+    text_lower = text.lower().strip()
+    replace_words = [
+        "replace", "change", "switch", "swap", "substitute", "instead of",
+        "palitan", "palit", "ipalit", "kapalit"
+    ]
+    return any(re.search(r'\b' + re.escape(w) + r'\b', text_lower) for w in replace_words)
+
+
+def extract_explicit_qty(text: str) -> Optional[int]:
+    """Extracts explicit numeric or word quantity if present in text, else None."""
+    m = re.search(r'\b(\d+)\b', text)
+    if m:
+        return int(m.group(1))
+    word_map = {
+        "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+        "isa": 1, "dalawa": 2, "tatlo": 3, "apat": 4, "lima": 5,
+        "isang": 1, "dalawang": 2, "tatlong": 3
+    }
+    for word, val in word_map.items():
+        if re.search(r'\b' + word + r'\b', text, re.IGNORECASE):
+            return val
+    return None
+
+
+def find_replace_dishes(text: str, cart_item_names: List[str] = None) -> Optional[Tuple[Dict[str, Any], Dict[str, Any], int, str]]:
+    """
+    Extracts (old_dish, new_dish, qty, instructions) for an order replacement request.
+    """
+    text_lower = text.lower().strip()
+    cart_items = [c.lower() for c in (cart_item_names or [])]
+
+    # Pattern 1: replace/change/switch/swap [qty] X with/to/for [qty] Y
+    m_eng = re.search(r'\b(?:replace|change|switch|swap|substitute)\s+(?:the\s+|my\s+)?(.+?)\s+(?:with|to|for|into)\s+(?:a\s+|an\s+|the\s+)?(.+)', text, re.IGNORECASE)
+    if m_eng:
+        d1 = find_dishes_in_text(m_eng.group(1))
+        d2 = find_dishes_in_text(m_eng.group(2))
+        if d1 and d2:
+            explicit_q = extract_explicit_qty(m_eng.group(1))
+            return (d1[0][0], d2[0][0], explicit_q, d2[0][2])
+
+    # Pattern 2: instead of X, [i want/give me/make it] Y
+    m_instead = re.search(r'\binstead of\s+(?:the\s+|my\s+)?(.+?)[,\s]+(?:give me|i want|make it|can i have|order|take|please)?\s*(?:a\s+|an\s+|the\s+)?(.+)', text, re.IGNORECASE)
+    if m_instead:
+        d1 = find_dishes_in_text(m_instead.group(1))
+        d2 = find_dishes_in_text(m_instead.group(2))
+        if d1 and d2:
+            explicit_q = extract_explicit_qty(m_instead.group(1))
+            return (d1[0][0], d2[0][0], explicit_q, d2[0][2])
+
+    # Pattern 3: Tagalog 'palitan [ang/yung] X ng Y'
+    m_tag1 = re.search(r'\bpalitan\s+(?:ang\s+|yung\s+|nang\s+)?(.+?)\s+ng\s+(?:isang\s+|dalawang\s+)?(.+)', text, re.IGNORECASE)
+    if m_tag1:
+        d1 = find_dishes_in_text(m_tag1.group(1))
+        d2 = find_dishes_in_text(m_tag1.group(2))
+        if d1 and d2:
+            explicit_q = extract_explicit_qty(m_tag1.group(1))
+            return (d1[0][0], d2[0][0], explicit_q, d2[0][2])
+
+    # Pattern 4: Tagalog 'ipalit [ang/yung] Y sa X'
+    m_tag2 = re.search(r'\bipalit\s+(?:ang\s+|yung\s+)?(.+?)\s+sa\s+(.+)', text, re.IGNORECASE)
+    if m_tag2:
+        d_new = find_dishes_in_text(m_tag2.group(1))
+        d_old = find_dishes_in_text(m_tag2.group(2))
+        if d_new and d_old:
+            explicit_q = extract_explicit_qty(m_tag2.group(2))
+            return (d_old[0][0], d_new[0][0], explicit_q, d_new[0][2])
+
+    # Pattern 5: General fallback if 2 dishes found
+    all_found = find_dishes_in_text(text)
+    if len(all_found) >= 2:
+        if cart_items:
+            in_cart = [d for d in all_found if d[0]['name'].lower() in cart_items]
+            not_in_cart = [d for d in all_found if d[0]['name'].lower() not in cart_items]
+            if in_cart and not_in_cart:
+                return (in_cart[0][0], not_in_cart[0][0], in_cart[0][1], not_in_cart[0][2])
+        return (all_found[0][0], all_found[1][0], None, all_found[1][2])
+
+    return None
+
 def has_ordering_intent(text: str) -> bool:
     """
     Determines if user actually intends to order or add food to cart,
@@ -506,6 +630,8 @@ def has_ordering_intent(text: str) -> bool:
     if any(k in text_lower for k in inquiry_keywords) and not has_order_verb:
         return False
 
+    if has_remove_intent(text) or has_replace_intent(text):
+        return False
     return has_order_verb
 
 
@@ -640,8 +766,28 @@ class BistroFSMAgent:
 
         elif tool_name == "remove_item_from_order":
             item = args.get("item_name", "")
-            res = db_tools.remove_item_from_order(self.session_id, item, db_path=self.db_path)
+            qty = args.get("qty")
+            if qty is not None:
+                try:
+                    qty = int(qty)
+                except Exception:
+                    qty = None
+            res = db_tools.remove_item_from_order(self.session_id, item, qty=qty, db_path=self.db_path)
             self.transition_state(STATE_TAKING_ORDER, reason=f"Item removed: {item}")
+            return res
+
+        elif tool_name == "replace_item_in_order":
+            old_item = args.get("old_item_name", "")
+            new_item = args.get("new_item_name", "")
+            qty = args.get("qty")
+            if qty is not None:
+                try:
+                    qty = int(qty)
+                except Exception:
+                    qty = None
+            instructions = args.get("instructions", "")
+            res = db_tools.replace_item_in_order(self.session_id, old_item, new_item, qty=qty, instructions=instructions, db_path=self.db_path)
+            self.transition_state(STATE_TAKING_ORDER, reason=f"Replaced {old_item} with {new_item}")
             return res
 
         elif tool_name == "update_item_quantity":
@@ -703,8 +849,15 @@ class BistroFSMAgent:
 
     def _ensure_critical_tool_execution(self, user_input: str, turn_tool_calls: List[Dict[str, Any]]) -> Tuple[str, bool]:
         """
-        Safety guard: Guarantees authoritative tool execution for allergens, out-of-stock checks,
-        ordering, reviewing, and checkout. Returns (message, is_override_needed).
+        Authoritative deterministic execution guard for:
+        1. Replace Order ('replace burger with truffle pasta', 'change burger to spaghetti')
+        2. Remove Item ('remove burger', 'cancel fries', 'bawasan ang burger')
+        3. Clear Tab ('clear cart', 'empty order', 'cancel order')
+        4. Checkout ('checkout', 'place my order', 'confirm')
+        5. Allergen & Dietary Safety ('does burger have dairy?')
+        6. Stock & Availability ('is seafood marinara available?')
+        7. Add Item(s) ('order 2 burgers', 'add fries', 'pabili')
+        8. Bill Review ('check bill', 'view cart')
         """
         text_lower = user_input.lower().strip()
         tools_executed = {tc["tool"] for tc in turn_tool_calls}
@@ -712,9 +865,9 @@ class BistroFSMAgent:
         is_override = False
 
         # Dynamic language detection for this turn
-        filipino_signals = ["po", "opo", "meron", "mayroon", "wala", "pabili", "kuha", "gusto ko", "ano", "alin", "magkano", "bayad", "salamat", "pwede", "bawal", "mabuhay", "paki"]
+        filipino_signals = ["po", "opo", "meron", "mayroon", "wala", "pabili", "kuha", "gusto ko", "ano", "alin", "magkano", "bayad", "salamat", "pwede", "bawal", "mabuhay", "paki", "palitan", "tanggalin", "alisin"]
         is_fil_input = any(re.search(r'\b' + re.escape(w) + r'\b', text_lower) for w in filipino_signals)
-        is_eng_input = any(re.search(r'\b' + re.escape(w) + r'\b', text_lower) for w in ["does", "have", "dairy", "lactose", "intolerance", "is", "there", "what", "how", "much", "can", "order", "please", "fries", "burger", "coffee", "allergen", "allergies"])
+        is_eng_input = any(re.search(r'\b' + re.escape(w) + r'\b', text_lower) for w in ["does", "have", "dairy", "lactose", "intolerance", "is", "there", "what", "how", "much", "can", "order", "please", "fries", "burger", "coffee", "allergen", "allergies", "replace", "remove", "cancel", "change", "switch"])
         if is_eng_input and not is_fil_input:
             is_filipino = False
         elif is_fil_input:
@@ -722,20 +875,121 @@ class BistroFSMAgent:
         else:
             is_filipino = (self.language == "filipino")
 
-        # 1. Allergen & Dietary Safety Guard (Authoritative ground truth)
-        explicit_allergen_words = [
+        # -------------------------------------------------------------
+        # 1. Intent: Replace Order (HIGHEST PRIORITY for order modifications)
+        # -------------------------------------------------------------
+        if has_replace_intent(user_input):
+            cart_info = db_tools.view_current_order(self.session_id, db_path=self.db_path)
+            cart_item_names = [it["name"] for it in cart_info.get("line_items", [])]
+            replace_pair = find_replace_dishes(user_input, cart_item_names)
+            if replace_pair:
+                old_dish, new_dish, qty, instructions = replace_pair
+                if "replace_item_in_order" not in tools_executed:
+                    res = self.execute_tool("replace_item_in_order", {
+                        "old_item_name": old_dish["name"],
+                        "new_item_name": new_dish["name"],
+                        "qty": qty,
+                        "instructions": instructions
+                    })
+                    turn_tool_calls.append({
+                        "tool": "replace_item_in_order",
+                        "arguments": {"old_item_name": old_dish["name"], "new_item_name": new_dish["name"], "qty": qty, "instructions": instructions},
+                        "result": res
+                    })
+                    tools_executed.add("replace_item_in_order")
+                    if res.get("status") == "success":
+                        if is_filipino:
+                            extra_messages.append(f"Pinalitan ko na po ang {res.get('quantity', 1)}x {old_dish['name']} ng {res.get('quantity', 1)}x {new_dish['name']} sa inyong order tab. Kabuuang bayarin: ₱{res.get('new_order_total', 0.0):.2f}.")
+                        else:
+                            extra_messages.append(f"Replaced {res.get('quantity', 1)}x {old_dish['name']} with {res.get('quantity', 1)}x {new_dish['name']} in your order tab. Your updated tab total is ₱{res.get('new_order_total', 0.0):.2f}.")
+                    elif res.get("status") == "not_in_cart":
+                        if is_filipino:
+                            extra_messages.append(f"Wala po sa inyong kasalukuyang tab ang {old_dish['name']} kaya hindi ito mapalitan. Nais niyo po bang i-order ang {new_dish['name']}?")
+                        else:
+                            extra_messages.append(f"'{old_dish['name']}' is not currently in your order tab to replace. Would you like to add '{new_dish['name']}' directly?")
+                    elif res.get("status") == "out_of_stock":
+                        extra_messages.append(res.get("message", f"Cannot replace: {new_dish['name']} is currently out of stock."))
+                    is_override = True
+
+        # -------------------------------------------------------------
+        # 2. Intent: Remove Item from Order
+        # -------------------------------------------------------------
+        elif has_remove_intent(user_input):
+            found_dishes = find_dishes_in_text(user_input)
+            if found_dishes:
+                explicit_q = extract_explicit_qty(user_input)
+                for dish, _, _ in found_dishes:
+                    if "remove_item_from_order" not in tools_executed:
+                        res = self.execute_tool("remove_item_from_order", {
+                            "item_name": dish["name"],
+                            "qty": explicit_q
+                        })
+                        turn_tool_calls.append({
+                            "tool": "remove_item_from_order",
+                            "arguments": {"item_name": dish["name"], "qty": explicit_q},
+                            "result": res
+                        })
+                        tools_executed.add("remove_item_from_order")
+                        if res.get("status") == "success":
+                            q_desc = f"{explicit_q}x " if explicit_q else ""
+                            if is_filipino:
+                                extra_messages.append(f"Tinanggal ko na po ang {q_desc}{dish['name']} mula sa inyong order tab. Kabuuang bayarin: ₱{res.get('new_order_total', 0.0):.2f}.")
+                            else:
+                                extra_messages.append(f"Removed {q_desc}{dish['name']} from your order tab. Your updated total is ₱{res.get('new_order_total', 0.0):.2f}.")
+                        elif res.get("status") == "not_in_cart":
+                            if is_filipino:
+                                extra_messages.append(f"Wala po sa inyong kasalukuyang tab ang {dish['name']}.")
+                            else:
+                                extra_messages.append(f"'{dish['name']}' is not currently in your order tab.")
+                        is_override = True
+
+        # -------------------------------------------------------------
+        # 3. Intent: Clear Cart / Reset Order
+        # -------------------------------------------------------------
+        elif any(w in text_lower for w in [
+            "clear order", "clear my order", "clear the order", "clear cart", "clear my cart",
+            "empty cart", "empty my cart", "cancel order", "cancel my order", "delete order",
+            "reset order", "reset cart", "tanggalin lahat", "burahin ang order", "i-clear ang order",
+            "i-clear ang cart", "i-reset ang order", "burahin lahat", "alisin lahat", "clear"
+        ]):
+            if "clear_order" not in tools_executed:
+                res = self.execute_tool("clear_order", {})
+                turn_tool_calls.append({"tool": "clear_order", "arguments": {}, "result": res})
+                tools_executed.add("clear_order")
+                if is_filipino:
+                    extra_messages.append("Na-clear ko na po ang inyong order tab. Wala na pong laman ang inyong cart. Ano po ang nais ninyong i-order mula sa ating menu?")
+                else:
+                    extra_messages.append("Your order tab has been completely cleared. Your cart is now empty. What would you like to order today?")
+                is_override = True
+
+        # -------------------------------------------------------------
+        # 4. Intent: Order Confirmation / Checkout
+        # -------------------------------------------------------------
+        elif any(w in text_lower for w in [
+            "confirm", "place my order", "place order", "place the order", "place it",
+            "place this", "place na", "paki-place", "paki place", "finalize", "checkout",
+            "bayaran", "i-confirm", "kumpirmahin", "pakiconfirm", "order na po", "complete order"
+        ]):
+            if "confirm_order_and_deduct_stock" not in tools_executed:
+                res = self.execute_tool("confirm_order_and_deduct_stock", {})
+                turn_tool_calls.append({"tool": "confirm_order_and_deduct_stock", "arguments": {}, "result": res})
+                tools_executed.add("confirm_order_and_deduct_stock")
+                if res.get("status") == "success":
+                    extra_messages.append(
+                        f"Receipt #{res.get('receipt_id')} generated for Table #{res.get('table_no')}. "
+                        f"Order routed to kitchen display! Grand Total: ₱{res.get('grand_total'):.2f}."
+                    )
+                elif res.get("message") == "Cannot confirm empty order.":
+                    extra_messages.append("Your order tab is currently empty. Please select items from our menu first.")
+                is_override = True
+
+        # -------------------------------------------------------------
+        # 5. Intent: Allergen & Dietary Safety Guard
+        # -------------------------------------------------------------
+        elif (any(w in text_lower for w in [
             "allergen", "allergens", "allergy", "allergies", "allergic", "lactose", "intoleran",
             "dietary", "contain", "ingredients", "sangkap", "safe ba", "bawal ba"
-        ]
-        is_question = any(text_lower.startswith(q) for q in ["does ", "is there ", "do ", "is ", "may ", "meron ba", "meron bang ", "ano ang ", "what is ", "what are "]) or ("?" in text_lower)
-        has_allergen_mention = any(a in text_lower for a in ["dairy", "cheese", "milk", "gluten", "wheat", "nut", "nuts", "peanut", "egg", "pork", "lactose", "shellfish"])
-        
-        has_order_verb = any(re.search(v, text_lower) for v in [r'\border\b', r'\bi want to order\b', r'\bpabili\b', r'\badd\b', r"\bi'll have\b", r'\bi will take\b'])
-        
-        is_allergen_query = (any(w in text_lower for w in explicit_allergen_words) or (is_question and has_allergen_mention)) and not (has_order_verb and not is_question)
-        is_avail_query = any(w in text_lower for w in ["available", "out of stock", "in stock", "sold out", "meron pa ba", "mayroon pa bang", "ubos na"])
-
-        if is_allergen_query:
+        ]) or (any(text_lower.startswith(q) for q in ["does ", "is there ", "do ", "is ", "may ", "meron ba", "meron bang ", "ano ang ", "what is ", "what are "]) or ("?" in text_lower)) and any(a in text_lower for a in ["dairy", "cheese", "milk", "gluten", "wheat", "nut", "nuts", "peanut", "egg", "pork", "lactose", "shellfish"])) and not any(re.search(v, text_lower) for v in [r'\border\b', r'\bi want to order\b', r'\bpabili\b', r'\badd\b']):
             found_dishes = find_dishes_in_text(user_input)
             target_dish = found_dishes[0][0]["name"] if found_dishes else "Perpetual Classic Burger"
             target_allergen = "Dairy"
@@ -794,8 +1048,10 @@ class BistroFSMAgent:
 
             is_override = True
 
-        # 2. Availability Query Guard (Authoritative database stock verification)
-        elif is_avail_query and not has_ordering_intent(user_input):
+        # -------------------------------------------------------------
+        # 6. Intent: Availability / Stock Query Guard
+        # -------------------------------------------------------------
+        elif any(w in text_lower for w in ["available", "out of stock", "in stock", "sold out", "meron pa ba", "mayroon pa bang", "ubos na"]) and not has_ordering_intent(user_input):
             found_dishes = find_dishes_in_text(user_input)
             target_dish = found_dishes[0][0]["name"] if found_dishes else "Perpetual Classic Burger"
             avail = self.execute_tool("check_availability", {"item_name": target_dish, "qty": 1})
@@ -831,8 +1087,10 @@ class BistroFSMAgent:
                     )
             is_override = True
 
-        # 3. Add Item(s) to Order ONLY IF genuine ordering intent is present AND not an allergen inquiry
-        elif has_ordering_intent(user_input) and not is_allergen_query and not is_avail_query:
+        # -------------------------------------------------------------
+        # 7. Intent: Add Item(s) to Order
+        # -------------------------------------------------------------
+        elif has_ordering_intent(user_input):
             found_dishes = find_dishes_in_text(user_input)
             if found_dishes:
                 added_dish_names = {tc.get("arguments", {}).get("item_name") for tc in turn_tool_calls if tc["tool"] == "add_item_to_order"}
@@ -877,46 +1135,9 @@ class BistroFSMAgent:
                         if res.get("status") == "success":
                             extra_messages.append(res.get("message", f"Added {qty}x {dish['name']}"))
 
-        # Clear Cart / Reset Order Intent
-        clear_keywords = [
-            "clear order", "clear my order", "clear the order", "clear cart", "clear my cart",
-            "empty cart", "empty my cart", "cancel order", "cancel my order", "delete order",
-            "reset order", "reset cart", "tanggalin lahat", "burahin ang order", "i-clear ang order",
-            "i-clear ang cart", "i-reset ang order", "burahin lahat", "alisin lahat", "clear"
-        ]
-        has_clear_intent = any(w in text_lower for w in clear_keywords)
-        if has_clear_intent:
-            if "clear_order" not in tools_executed:
-                res = self.execute_tool("clear_order", {})
-                turn_tool_calls.append({"tool": "clear_order", "arguments": {}, "result": res})
-                tools_executed.add("clear_order")
-                if is_filipino:
-                    extra_messages.append("Na-clear ko na po ang inyong order tab. Wala na pong laman ang inyong cart. Ano po ang nais ninyong i-order mula sa ating menu?")
-                else:
-                    extra_messages.append("Your order tab has been completely cleared. Your cart is now empty. What would you like to order today?")
-                is_override = True
-
-        # 3. Order Confirmation / Checkout (if user asked to confirm or place order)
-        confirm_keywords = [
-            "confirm", "place my order", "place order", "place the order", "place it",
-            "place this", "place na", "paki-place", "paki place", "finalize", "checkout",
-            "bayaran", "i-confirm", "kumpirmahin", "pakiconfirm", "order na po", "complete order"
-        ]
-        if any(w in text_lower for w in confirm_keywords):
-            if "confirm_order_and_deduct_stock" not in tools_executed:
-                res = self.execute_tool("confirm_order_and_deduct_stock", {})
-                turn_tool_calls.append({"tool": "confirm_order_and_deduct_stock", "arguments": {}, "result": res})
-                tools_executed.add("confirm_order_and_deduct_stock")
-                if res.get("status") == "success":
-                    extra_messages.append(
-                        f"Receipt #{res.get('receipt_id')} generated for Table #{res.get('table_no')}. "
-                        f"Order routed to kitchen display! Grand Total: ₱{res.get('grand_total'):.2f}."
-                    )
-                elif res.get("message") == "Cannot confirm empty order.":
-                    extra_messages.append("Your order tab is currently empty. Please select items from our menu first.")
-                is_override = True
-
-        # 4. View Current Bill / Tab (only if not already confirming)
+        # -------------------------------------------------------------
+        # 8. Intent: View Current Bill / Tab
+        # -------------------------------------------------------------
         elif any(w in text_lower for w in ["bill", "cart", "tab", "magkano ang bill", "bayarin", "summary", "review"]):
             if "view_current_order" not in tools_executed and "confirm_order_and_deduct_stock" not in tools_executed:
                 res = self.execute_tool("view_current_order", {})
@@ -942,9 +1163,6 @@ class BistroFSMAgent:
         is_ordering = has_ordering_intent(user_input)
         found_dishes = find_dishes_in_text(user_input)
 
-        # -------------------------------------------------------------
-        # 1. Intent: Allergen & Dietary Query (HIGHEST PRIORITY for safety)
-        # -------------------------------------------------------------
         explicit_allergen_words = [
             "allergen", "allergens", "allergy", "allergies", "allergic", "lactose", "intoleran",
             "dietary", "contain", "ingredients", "sangkap", "safe ba", "bawal ba"
@@ -952,11 +1170,80 @@ class BistroFSMAgent:
         is_question = any(text_lower.startswith(q) for q in ["does ", "is there ", "do ", "is ", "may ", "meron ba", "meron bang ", "ano ang ", "what is ", "what are "]) or ("?" in text_lower)
         has_allergen_mention = any(a in text_lower for a in ["dairy", "cheese", "milk", "gluten", "wheat", "nut", "nuts", "peanut", "egg", "pork", "lactose", "shellfish"])
         has_order_verb = any(re.search(v, text_lower) for v in [r'\border\b', r'\bi want to order\b', r'\bpabili\b', r'\badd\b', r"\bi'll have\b", r'\bi will take\b'])
-        
         is_allergen_query = (any(w in text_lower for w in explicit_allergen_words) or (is_question and has_allergen_mention)) and not (has_order_verb and not is_question)
         is_avail_query = any(w in text_lower for w in ["available", "out of stock", "in stock", "sold out", "meron pa ba", "mayroon pa bang", "ubos na"])
 
-        if is_allergen_query:
+        # -------------------------------------------------------------
+        # 1. Intent: Replace Order (HIGHEST PRIORITY for order modifications)
+        # -------------------------------------------------------------
+        if has_replace_intent(user_input):
+            cart_info = db_tools.view_current_order(self.session_id, db_path=self.db_path)
+            cart_item_names = [it["name"] for it in cart_info.get("line_items", [])]
+            replace_pair = find_replace_dishes(user_input, cart_item_names)
+            if replace_pair:
+                old_dish, new_dish, qty, instructions = replace_pair
+                res = self.execute_tool("replace_item_in_order", {
+                    "old_item_name": old_dish["name"],
+                    "new_item_name": new_dish["name"],
+                    "qty": qty,
+                    "instructions": instructions
+                })
+                turn_tool_calls.append({
+                    "tool": "replace_item_in_order",
+                    "arguments": {"old_item_name": old_dish["name"], "new_item_name": new_dish["name"], "qty": qty, "instructions": instructions},
+                    "result": res
+                })
+                if res.get("status") == "success":
+                    if is_filipino:
+                        resp_text = f"Pinalitan ko na po ang {res.get('quantity', 1)}x {old_dish['name']} ng {res.get('quantity', 1)}x {new_dish['name']} sa inyong order tab. Kabuuang bayarin: ₱{res.get('new_order_total', 0.0):.2f}."
+                    else:
+                        resp_text = f"Replaced {res.get('quantity', 1)}x {old_dish['name']} with {res.get('quantity', 1)}x {new_dish['name']} in your order tab. Your updated tab total is ₱{res.get('new_order_total', 0.0):.2f}."
+                elif res.get("status") == "not_in_cart":
+                    if is_filipino:
+                        resp_text = f"Wala po sa inyong kasalukuyang tab ang {old_dish['name']} kaya hindi ito mapalitan. Nais niyo po bang i-order ang {new_dish['name']}?"
+                    else:
+                        resp_text = f"'{old_dish['name']}' is not currently in your order tab to replace. Would you like to add '{new_dish['name']}' directly?"
+                elif res.get("status") == "out_of_stock":
+                    resp_text = res.get("message", f"Cannot replace: {new_dish['name']} is currently out of stock.")
+            else:
+                resp_text = "Which dish would you like to replace, and what would you like instead?" if not is_filipino else "Aling pagkain po ang nais ninyong palitan at ano ang nais ninyong ipalit?"
+
+        # -------------------------------------------------------------
+        # 2. Intent: Remove Item from Order
+        # -------------------------------------------------------------
+        elif has_remove_intent(user_input):
+            if found_dishes:
+                explicit_q = extract_explicit_qty(user_input)
+                rem_msgs = []
+                for dish, _, _ in found_dishes:
+                    res = self.execute_tool("remove_item_from_order", {
+                        "item_name": dish["name"],
+                        "qty": explicit_q
+                    })
+                    turn_tool_calls.append({
+                        "tool": "remove_item_from_order",
+                        "arguments": {"item_name": dish["name"], "qty": explicit_q},
+                        "result": res
+                    })
+                    if res.get("status") == "success":
+                        q_desc = f"{explicit_q}x " if explicit_q else ""
+                        if is_filipino:
+                            rem_msgs.append(f"Tinanggal ko na po ang {q_desc}{dish['name']} mula sa inyong order tab. Kabuuang bayarin: ₱{res.get('new_order_total', 0.0):.2f}.")
+                        else:
+                            rem_msgs.append(f"Removed {q_desc}{dish['name']} from your order tab. Your updated total is ₱{res.get('new_order_total', 0.0):.2f}.")
+                    elif res.get("status") == "not_in_cart":
+                        if is_filipino:
+                            rem_msgs.append(f"Wala po sa inyong kasalukuyang tab ang {dish['name']}.")
+                        else:
+                            rem_msgs.append(f"'{dish['name']}' is not currently in your order tab.")
+                resp_text = "\n".join(rem_msgs)
+            else:
+                resp_text = "Which dish would you like to remove from your order tab?" if not is_filipino else "Aling pagkain po ang nais ninyong tanggalin sa inyong tab?"
+
+        # -------------------------------------------------------------
+        # 3. Intent: Allergen & Dietary Query (HIGHEST PRIORITY for safety)
+        # -------------------------------------------------------------
+        elif is_allergen_query:
             target_dish = found_dishes[0][0]["name"] if found_dishes else "Perpetual Classic Burger"
             target_allergen = "Dairy"
             for a in ["Gluten", "Nuts", "Egg", "Pork", "Shellfish", "Fish", "Dairy"]:
@@ -1407,7 +1694,11 @@ class BistroFSMAgent:
                     elif t_name == "add_item_to_order":
                         synthesis_parts.append(t_res.get("message", "Item updated in your order."))
                     elif t_name == "remove_item_from_order":
-                        synthesis_parts.append(t_res.get("message", "Item removed."))
+                        synthesis_parts.append(t_res.get("message", "Item removed from your order."))
+                    elif t_name == "replace_item_in_order":
+                        synthesis_parts.append(t_res.get("message", "Item replaced in your order."))
+                    elif t_name == "clear_order":
+                        synthesis_parts.append(t_res.get("message", "Order tab cleared."))
                     elif t_name == "get_menu_by_category" and t_res.get("status") == "success":
                         item_names = ", ".join([it['name'] + f" (₱{it['price']:.2f})" for it in t_res.get("items", [])])
                         synthesis_parts.append(f"Here are the items available in {t_res.get('category_queried')}: {item_names}")
