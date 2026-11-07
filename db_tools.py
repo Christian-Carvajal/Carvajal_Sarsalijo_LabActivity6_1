@@ -157,6 +157,8 @@ MENU_ITEM_SYNONYMS = {
     "cheese fries": "Loaded Cheese Fries",
     "loaded fries": "Loaded Cheese Fries",
     "onion rings": "Crispy Onion Rings",
+    "crispy onion": "Crispy Onion Rings",
+    "onion": "Crispy Onion Rings",
     "rings": "Crispy Onion Rings",
     "caesar salad": "Garden Fresh Caesar Salad",
     "salad": "Garden Fresh Caesar Salad",
