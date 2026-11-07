@@ -9,6 +9,7 @@ import sqlite3
 import json
 from typing import Dict, Any, List, Optional
 import uuid
+import re
 
 _BASE_DIR = os.path.dirname(__file__)
 _RESOURCE_DB = os.path.join(_BASE_DIR, "resources", "restaurant.db")
@@ -105,19 +106,143 @@ def get_all_categories(db_path: str = DB_PATH) -> List[str]:
         return [row["category"] for row in cursor.fetchall()]
 
 
+MENU_ITEM_SYNONYMS = {
+    # Burgers
+    "perpetual cheeseburger": "Perpetual Classic Burger",
+    "perpetual cheese burger": "Perpetual Classic Burger",
+    "cheeseburger": "Perpetual Classic Burger",
+    "cheese burger": "Perpetual Classic Burger",
+    "classic cheeseburger": "Perpetual Classic Burger",
+    "perpetual burger": "Perpetual Classic Burger",
+    "classic burger": "Perpetual Classic Burger",
+    "classic beef burger": "Perpetual Classic Burger",
+    "beef burger": "Perpetual Classic Burger",
+    "burger": "Perpetual Classic Burger",
+    "burgers": "Perpetual Classic Burger",
+    "bacon burger": "Bacon Mushroom Melt Burger",
+    "bacon mushroom": "Bacon Mushroom Melt Burger",
+    "mushroom burger": "Bacon Mushroom Melt Burger",
+    "mushroom melt": "Bacon Mushroom Melt Burger",
+    "chicken pesto": "Grilled Chicken Pesto Sandwich",
+    "chicken pesto sandwich": "Grilled Chicken Pesto Sandwich",
+    "pesto sandwich": "Grilled Chicken Pesto Sandwich",
+    "chicken sandwich": "Grilled Chicken Pesto Sandwich",
+    "buffalo tenders": "Crispy Buffalo Chicken Tenders",
+    "buffalo chicken tenders": "Crispy Buffalo Chicken Tenders",
+    "chicken tenders": "Crispy Buffalo Chicken Tenders",
+    "tenders": "Crispy Buffalo Chicken Tenders",
+    "bbq burger": "Smoked BBQ Bacon Brisket Burger",
+    "brisket burger": "Smoked BBQ Bacon Brisket Burger",
+    "bbq brisket burger": "Smoked BBQ Bacon Brisket Burger",
+
+    # Pastas
+    "truffle pasta": "Truffle Mushroom Pasta",
+    "mushroom pasta": "Truffle Mushroom Pasta",
+    "truffle mushroom": "Truffle Mushroom Pasta",
+    "spaghetti": "Classic Spaghetti Bolognese",
+    "spag": "Classic Spaghetti Bolognese",
+    "spaghetti bolognese": "Classic Spaghetti Bolognese",
+    "bolognese": "Classic Spaghetti Bolognese",
+    "carbonara": "Creamy Carbonara",
+    "creamy carbonara": "Creamy Carbonara",
+    "seafood fettuccine": "Seafood Marinara Fettuccine",
+    "seafood pasta": "Seafood Marinara Fettuccine",
+    "marinara fettuccine": "Seafood Marinara Fettuccine",
+    "marinara": "Seafood Marinara Fettuccine",
+
+    # Sides
+    "french fries": "Golden French Fries",
+    "fries": "Golden French Fries",
+    "golden fries": "Golden French Fries",
+    "cheese fries": "Loaded Cheese Fries",
+    "loaded fries": "Loaded Cheese Fries",
+    "onion rings": "Crispy Onion Rings",
+    "rings": "Crispy Onion Rings",
+    "caesar salad": "Garden Fresh Caesar Salad",
+    "salad": "Garden Fresh Caesar Salad",
+    "mozzarella sticks": "Crispy Mozzarella Sticks",
+    "cheese sticks": "Crispy Mozzarella Sticks",
+
+    # Beverages
+    "brewed coffee": "Classic Brewed Coffee",
+    "coffee": "Classic Brewed Coffee",
+    "classic coffee": "Classic Brewed Coffee",
+    "hot coffee": "Classic Brewed Coffee",
+    "black coffee": "Classic Brewed Coffee",
+    "caramel macchiato": "Iced Caramel Macchiato",
+    "macchiato": "Iced Caramel Macchiato",
+    "iced coffee": "Iced Caramel Macchiato",
+    "calamansi tea": "Fresh Calamansi Iced Tea",
+    "calamansi iced tea": "Fresh Calamansi Iced Tea",
+    "iced tea": "Fresh Calamansi Iced Tea",
+    "tea": "Fresh Calamansi Iced Tea",
+    "mango smoothie": "Mango Passionfruit Smoothie",
+    "passionfruit smoothie": "Mango Passionfruit Smoothie",
+    "smoothie": "Mango Passionfruit Smoothie",
+    "avocado smoothie": "Avocado Cream Cheese Smoothie",
+
+    # Desserts
+    "lava cake": "Molten Lava Chocolate Cake",
+    "molten lava cake": "Molten Lava Chocolate Cake",
+    "chocolate cake": "Molten Lava Chocolate Cake",
+    "cake": "Molten Lava Chocolate Cake",
+    "cheesecake": "Classic New York Cheesecake",
+    "new york cheesecake": "Classic New York Cheesecake",
+    "ny cheesecake": "Classic New York Cheesecake",
+    "matcha tiramisu": "Matcha Green Tea Tiramisu",
+    "tiramisu": "Matcha Green Tea Tiramisu",
+
+    # Combos
+    "champion combo": "Perpetual Champion Combo",
+    "pasta combo": "Pasta & Sweet Treat Combo",
+    "chef duo": "Chef Ezekiel's Special Duo",
+    "duo combo": "Chef Ezekiel's Special Duo",
+    "study fuel": "Late Night Study Fuel Combo",
+    "late night combo": "Late Night Study Fuel Combo"
+}
+
+
 def _find_menu_item(item_query: str, conn: sqlite3.Connection) -> Optional[sqlite3.Row]:
-    """Helper to locate a menu item by exact name or substring matching."""
+    """Helper to locate a menu item by exact name, alias dictionary, or substring matching."""
     cursor = conn.cursor()
-    # 1. Exact match (case insensitive)
+    clean_q = item_query.strip().lower()
+
+    # 1. Alias / Synonym direct lookup
+    if clean_q in MENU_ITEM_SYNONYMS:
+        canonical_name = MENU_ITEM_SYNONYMS[clean_q]
+        cursor.execute("SELECT * FROM menu_items WHERE LOWER(name) = LOWER(?)", (canonical_name,))
+        row = cursor.fetchone()
+        if row:
+            return row
+
+    # 1b. Check if any synonym matches within clean_q
+    for syn_key, can_name in sorted(MENU_ITEM_SYNONYMS.items(), key=lambda x: len(x[0]), reverse=True):
+        pattern = r'' + re.escape(syn_key) + r''
+        if re.search(pattern, clean_q) or syn_key in clean_q:
+            cursor.execute("SELECT * FROM menu_items WHERE LOWER(name) = LOWER(?)", (can_name,))
+            row = cursor.fetchone()
+            if row:
+                return row
+
+    # 2. Exact match (case insensitive)
     cursor.execute("SELECT * FROM menu_items WHERE LOWER(name) = LOWER(?)", (item_query.strip(),))
     row = cursor.fetchone()
     if row:
         return row
 
-    # 2. Substring match
+    # 3. Substring match
     cursor.execute("SELECT * FROM menu_items WHERE LOWER(name) LIKE LOWER(?) ORDER BY LENGTH(name) ASC LIMIT 1", (f"%{item_query.strip()}%",))
-    return cursor.fetchone()
+    row = cursor.fetchone()
+    if row:
+        return row
 
+    # 4. Reverse substring
+    cursor.execute("SELECT * FROM menu_items")
+    for item in cursor.fetchall():
+        if item["name"].lower() in clean_q:
+            return item
+
+    return None
 
 # =====================================================================
 # Professor-Specified Tool Functions (bound directly to local LLM)
@@ -445,6 +570,69 @@ def remove_item_from_order(session_id: str, item_name: str, qty: Optional[int] =
         }
 
 
+
+def remove_order_by_ordinal(session_id: str, ordinal: int, db_path: str = DB_PATH) -> Dict[str, Any]:
+    """
+    Removes an item from the active order tab based on its 1-based chronological addition sequence.
+    ordinal=1 removes the 1st added order, ordinal=2 removes 2nd, etc.
+    ordinal=-1 removes the last added order.
+    """
+    with get_db_connection(db_path) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT oli.id, oli.quantity, oli.special_instructions, mi.name, mi.price
+            FROM order_line_items oli
+            JOIN menu_items mi ON oli.item_id = mi.id
+            WHERE oli.session_id = ?
+            ORDER BY oli.id ASC
+            """,
+            (session_id,)
+        )
+        lines = cursor.fetchall()
+        if not lines:
+            return {
+                "status": "empty_cart",
+                "message": "Your order tab is currently empty. There are no orders to remove.",
+                "remaining_items": 0,
+                "new_order_total": 0.0
+            }
+
+        total_lines = len(lines)
+        if ordinal == -1:
+            target_idx = total_lines - 1
+            display_pos = f"last (order #{total_lines})"
+        elif 1 <= ordinal <= total_lines:
+            target_idx = ordinal - 1
+            display_pos = f"order #{ordinal}"
+        else:
+            return {
+                "status": "invalid_ordinal",
+                "message": f"Order #{ordinal} does not exist. You currently have {total_lines} item(s) on your tab.",
+                "total_items": total_lines
+            }
+
+        target_line = lines[target_idx]
+        target_id = target_line["id"]
+        target_name = target_line["name"]
+        target_qty = target_line["quantity"]
+
+        cursor.execute("DELETE FROM order_line_items WHERE id = ?", (target_id,))
+        conn.commit()
+
+        updated_order = view_current_order(session_id, db_path=db_path)
+        return {
+            "status": "success",
+            "message": f"Removed {display_pos} ({target_qty}x {target_name}) from your order tab.",
+            "removed_item": target_name,
+            "removed_qty": target_qty,
+            "ordinal": ordinal,
+            "new_order_total": updated_order["grand_total"],
+            "remaining_items": updated_order["item_count"],
+            "cart": updated_order
+        }
+
+
 def replace_item_in_order(
     session_id: str,
     old_item_name: str,
@@ -622,11 +810,12 @@ def view_current_order(session_id: str, db_path: str = DB_PATH) -> Dict[str, Any
         subtotal = 0.0
         total_qty = 0
 
-        for line in lines:
+        for idx, line in enumerate(lines, 1):
             line_total = line["quantity"] * line["unit_price"]
             subtotal += line_total
             total_qty += line["quantity"]
             items.append({
+                "order_number": idx,
                 "line_id": line["id"],
                 "name": line["name"],
                 "category": line["category"],
@@ -655,7 +844,7 @@ def view_current_order(session_id: str, db_path: str = DB_PATH) -> Dict[str, Any
         }
 
 
-def confirm_order_and_deduct_stock(session_id: str, db_path: str = DB_PATH) -> Dict[str, Any]:
+def confirm_order_and_deduct_stock(session_id: str, discount_type: str = "regular", db_path: str = DB_PATH) -> Dict[str, Any]:
     """
     Transactional order confirmation:
     1. Validates all line items against current inventory.
@@ -725,8 +914,28 @@ def confirm_order_and_deduct_stock(session_id: str, db_path: str = DB_PATH) -> D
 
             conn.commit()
 
-            # Compile final receipt
+            # Compile final receipt with discount calculation
             tab = view_current_order(session_id, db_path=db_path)
+            subtotal = tab["subtotal"]
+
+            # Student, Senior, PWD 20% statutory discount; regular is as-is
+            disc_clean = (discount_type or "regular").lower().strip()
+            if "student" in disc_clean:
+                discount_rate = 0.20
+                discount_label = "Student Discount (20%)"
+            elif "senior" in disc_clean:
+                discount_rate = 0.20
+                discount_label = "Senior Citizen Discount (20%)"
+            elif "pwd" in disc_clean or "disability" in disc_clean:
+                discount_rate = 0.20
+                discount_label = "PWD Discount (20%)"
+            else:
+                discount_rate = 0.0
+                discount_label = "Regular (No Discount)"
+
+            discount_amount = round(subtotal * discount_rate, 2)
+            grand_total = round(subtotal - discount_amount, 2)
+
             receipt_id = f"PB-{session['table_no']}-{str(uuid.uuid4())[:6].upper()}"
 
             # Automatically dispatch to Kitchen Display System (KDS)
@@ -747,11 +956,14 @@ def confirm_order_and_deduct_stock(session_id: str, db_path: str = DB_PATH) -> D
                 "table_no": session["table_no"],
                 "session_id": session_id,
                 "fsm_state": "STATE_CONFIRMED",
-                "message": "Order successfully finalized and confirmed! Kitchen ticket dispatched.",
+                "message": f"Order successfully finalized and confirmed! Kitchen ticket dispatched. {discount_label}: -₱{discount_amount:.2f}" if discount_amount > 0 else "Order successfully finalized and confirmed! Kitchen ticket dispatched.",
                 "itemized_receipt": tab["line_items"],
-                "subtotal": tab["subtotal"],
+                "subtotal": subtotal,
+                "discount_type": discount_label,
+                "discount_rate": discount_rate,
+                "discount_amount": discount_amount,
                 "vat_included": tab["vat_12_pct_breakdown"],
-                "grand_total": tab["grand_total"],
+                "grand_total": grand_total,
                 "currency": "Philippine Pesos (pesos, ₱)",
             }
         except Exception as e:

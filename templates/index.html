@@ -3300,6 +3300,60 @@
             }
         }
 
+
+        .cart-order-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            background: #5c0612;
+            color: #ffffff;
+            border-radius: 4px;
+            font-size: 10.5px;
+            font-weight: 800;
+            line-height: 1.2;
+            margin-top: 2px;
+            flex-shrink: 0;
+            letter-spacing: 0.5px;
+        }
+        .btn-disc {
+            padding: 5px 6px;
+            font-size: 10.5px;
+            font-weight: 700;
+            border: 1px solid #cbd5e1;
+            border-radius: 5px;
+            background: #ffffff;
+            color: #334155;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .btn-disc:hover {
+            border-color: #5c0612;
+            color: #5c0612;
+        }
+        .btn-disc.active {
+            background: #5c0612;
+            color: #ffffff;
+            border-color: #5c0612;
+        }
+        .btn-disc-pay {
+            padding: 6px 8px;
+            font-size: 11px;
+            font-weight: 700;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            background: #ffffff;
+            color: #334155;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .btn-disc-pay:hover {
+            border-color: #5c0612;
+            color: #5c0612;
+        }
+        .btn-disc-pay.active {
+            background: #5c0612;
+            color: #ffffff;
+            border-color: #5c0612;
+        }
     </style>
 </head>
 <body>
@@ -3693,6 +3747,20 @@
                         </div>
                     </div>
 
+                    <!-- Statutory Discount Selector (Student, Senior, PWD - 20%) -->
+                    <div style="margin: 8px 12px; padding: 8px 10px; background: rgba(92, 6, 18, 0.04); border: 1px dashed rgba(92, 6, 18, 0.3); border-radius: var(--radius-md);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <span style="font-size: 11px; font-weight: 800; color: var(--uphsd-maroon); text-transform: uppercase;">🏷️ Customer Discount</span>
+                            <span id="tabDiscountBadge" style="font-size: 10px; font-weight: 800; background: #5c0612; color: #fff; padding: 1px 6px; border-radius: 10px;">0% (Regular)</span>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;">
+                            <button type="button" class="btn-disc active" id="cartDisc_regular" onclick="selectCartDiscount('regular')">Regular</button>
+                            <button type="button" class="btn-disc" id="cartDisc_student" onclick="selectCartDiscount('student')">🎓 Student (-20%)</button>
+                            <button type="button" class="btn-disc" id="cartDisc_senior" onclick="selectCartDiscount('senior')">🧓 Senior (-20%)</button>
+                            <button type="button" class="btn-disc" id="cartDisc_pwd" onclick="selectCartDiscount('pwd')">♿ PWD (-20%)</button>
+                        </div>
+                    </div>
+
                     <!-- Order Totals & Action Button -->
                     <div class="order-tab-footer">
                         <div class="calc-row">
@@ -3703,9 +3771,9 @@
                             <span>12% VAT Included:</span>
                             <span id="tabVat">₱0.00</span>
                         </div>
-                        <div class="calc-row">
-                            <span>Campus Discount:</span>
-                            <span style="color: var(--accent-green); font-weight: 700;">-₱0.00</span>
+                        <div class="calc-row" id="tabDiscountRow">
+                            <span id="tabDiscountLabel">Campus Discount:</span>
+                            <span id="tabDiscountVal" style="color: var(--accent-green); font-weight: 700;">-₱0.00</span>
                         </div>
                         <div class="calc-row total-row">
                             <span>Grand Total:</span>
@@ -4029,6 +4097,10 @@
                     <div style="display: flex; flex-direction: column; gap: 4px;">
                         <div style="display: flex; justify-content: space-between;"><span>Subtotal:</span> <span id="recSubtotal">₱0.00</span></div>
                         <div style="display: flex; justify-content: space-between;"><span>12% VAT:</span> <span id="recVat">₱0.00</span></div>
+                        <div id="recDiscountRow" style="display: none; justify-content: space-between; color: #166534; font-weight: 700;">
+                            <span id="recDiscountLabel">Discount (20%):</span>
+                            <span id="recDiscountVal">-₱0.00</span>
+                        </div>
                         <div style="display: flex; justify-content: space-between; font-weight: 800; font-size: 14px; margin-top: 4px; color: var(--uphsd-maroon);">
                             <span>TOTAL PAID / BILLED:</span> <span id="recTotal">₱0.00</span>
                         </div>
@@ -4082,6 +4154,23 @@
                     <div style="text-align: right;">
                         <div style="font-size: 11px; font-weight: 700; color: var(--text-muted);">Table Session</div>
                         <div style="font-size: 13px; font-weight: 800; color: var(--text-primary);" id="payModalTable">Table #1</div>
+                    </div>
+                </div>
+
+                <!-- Statutory Discount Selector inside Checkout Modal -->
+                <div style="background: rgba(92, 6, 18, 0.04); border: 1px solid rgba(92, 6, 18, 0.15); border-radius: var(--radius-md); padding: 10px 14px; margin-bottom: 16px;">
+                    <div style="font-size: 11px; font-weight: 800; color: var(--uphsd-maroon); text-transform: uppercase; margin-bottom: 6px; display: flex; justify-content: space-between;">
+                        <span>🎓 Customer Classification / Discount</span>
+                        <span id="payModalDiscountBadge" style="background: var(--uphsd-maroon); color: #fff; padding: 1px 6px; border-radius: 4px; font-size: 10px;">0% (Regular)</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;">
+                        <button type="button" class="btn-disc-pay active" id="payDisc_regular" onclick="selectPayDiscount('regular')">Regular (As is)</button>
+                        <button type="button" class="btn-disc-pay" id="payDisc_student" onclick="selectPayDiscount('student')">🎓 Student (-20%)</button>
+                        <button type="button" class="btn-disc-pay" id="payDisc_senior" onclick="selectPayDiscount('senior')">🧓 Senior (-20%)</button>
+                        <button type="button" class="btn-disc-pay" id="payDisc_pwd" onclick="selectPayDiscount('pwd')">♿ PWD (-20%)</button>
+                    </div>
+                    <div id="payDiscountBreakdown" style="font-size: 11.5px; color: #166534; font-weight: 700; margin-top: 8px; display: none;">
+                        Subtotal: <span id="payModalSubtotal">₱0.00</span> | Discount (20%): <span id="payModalDiscountAmt">-₱0.00</span> | Final Total: <span id="payModalNetTotal">₱0.00</span>
                     </div>
                 </div>
 
@@ -4305,6 +4394,120 @@
         let currentSearchQuery = '';
         let allMenuItems = [];
         let pendingCustomizeItem = null;
+
+        let activeDiscountType = 'regular';
+        let latestCartData = null;
+
+        function selectCartDiscount(type) {
+            activeDiscountType = type;
+            document.querySelectorAll('.btn-disc').forEach(b => b.classList.remove('active'));
+            const btn = document.getElementById(`cartDisc_${type}`);
+            if (btn) btn.classList.add('active');
+
+            const isDisc = (type === 'student' || type === 'senior' || type === 'pwd');
+            const badge = document.getElementById('tabDiscountBadge');
+            if (badge) {
+                badge.innerText = isDisc ? `20% (${type.toUpperCase()})` : '0% (Regular)';
+            }
+
+            // Sync payment modal buttons
+            document.querySelectorAll('.btn-disc-pay').forEach(b => b.classList.remove('active'));
+            const pBtn = document.getElementById(`payDisc_${type}`);
+            if (pBtn) pBtn.classList.add('active');
+
+            if (latestCartData) {
+                applyDiscountToCartUI(latestCartData);
+            }
+        }
+
+        function selectPayDiscount(type) {
+            selectCartDiscount(type);
+            updatePaymentModalTotals();
+        }
+
+        function applyDiscountToCartUI(cart) {
+            const subtotal = cart.subtotal || 0;
+            const isDisc = (activeDiscountType === 'student' || activeDiscountType === 'senior' || activeDiscountType === 'pwd');
+            const rate = isDisc ? 0.20 : 0.0;
+            const discAmt = subtotal * rate;
+            const finalTotal = subtotal - discAmt;
+
+            document.getElementById('tabSubtotal').innerText = `₱${subtotal.toFixed(2)}`;
+            document.getElementById('tabVat').innerText = `₱${(cart.vat_12_pct_breakdown || 0).toFixed(2)}`;
+
+            const discRow = document.getElementById('tabDiscountRow');
+            const discVal = document.getElementById('tabDiscountVal');
+            const discLabel = document.getElementById('tabDiscountLabel');
+            if (discRow && discVal && discLabel) {
+                if (isDisc) {
+                    discLabel.innerText = `${activeDiscountType.toUpperCase()} (-20%):`;
+                    discVal.innerText = `-₱${discAmt.toFixed(2)}`;
+                    discVal.style.color = '#166534';
+                } else {
+                    discLabel.innerText = 'Campus Discount:';
+                    discVal.innerText = '-₱0.00';
+                    discVal.style.color = 'var(--text-muted)';
+                }
+            }
+
+            document.getElementById('tabGrandTotal').innerText = `₱${finalTotal.toFixed(2)}`;
+
+            const confirmBtn = document.getElementById('btnConfirmOrder');
+            const confirmTotal = document.getElementById('btnConfirmTotal');
+            if (cart.line_items && cart.line_items.length > 0) {
+                confirmBtn.disabled = false;
+                confirmBtn.classList.add('pulsing');
+                confirmTotal.innerText = `(₱${finalTotal.toFixed(2)})`;
+            } else {
+                confirmBtn.disabled = true;
+                confirmBtn.classList.remove('pulsing');
+                confirmTotal.innerText = '';
+            }
+        }
+
+        function updatePaymentModalTotals() {
+            if (!latestCartData) return;
+            const subtotal = latestCartData.subtotal || 0;
+            const isDisc = (activeDiscountType === 'student' || activeDiscountType === 'senior' || activeDiscountType === 'pwd');
+            const rate = isDisc ? 0.20 : 0.0;
+            const discAmt = subtotal * rate;
+            const finalTotal = subtotal - discAmt;
+
+            document.getElementById('payModalTotal').innerText = `₱${finalTotal.toFixed(2)}`;
+            const breakdown = document.getElementById('payDiscountBreakdown');
+            const badge = document.getElementById('payModalDiscountBadge');
+            if (badge) {
+                badge.innerText = isDisc ? `20% (${activeDiscountType.toUpperCase()})` : '0% (Regular)';
+            }
+
+            if (breakdown) {
+                if (isDisc) {
+                    breakdown.style.display = 'block';
+                    document.getElementById('payModalSubtotal').innerText = `₱${subtotal.toFixed(2)}`;
+                    document.getElementById('payModalDiscountAmt').innerText = `-₱${discAmt.toFixed(2)}`;
+                    document.getElementById('payModalNetTotal').innerText = `₱${finalTotal.toFixed(2)}`;
+                } else {
+                    breakdown.style.display = 'none';
+                }
+            }
+        }
+
+        async function removeOrderByOrdinal(ordinal) {
+            try {
+                const res = await fetch('/api/cart/remove-ordinal', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ordinal: ordinal})
+                });
+                const data = await res.json();
+                renderCart(data.cart);
+                const msg = data.result?.message || `Removed order #${ordinal}`;
+                showToast(msg, '🗑️');
+            } catch(e) {
+                console.error("Remove order by ordinal failed:", e);
+            }
+        }
+
         let isRecording = null;
 
         // Food Photography High-Res Unsplash Mapping (Verified 100% HTTP 200)
@@ -4736,15 +4939,20 @@
             confirmBtn.classList.add('pulsing');
             confirmTotal.innerText = `(₱${(cart.grand_total || 0).toFixed(2)})`;
 
+            latestCartData = cart;
             container.innerHTML = '';
-            items.forEach(it => {
+            items.forEach((it, idx) => {
+                const ordNum = it.order_number || (idx + 1);
                 const row = document.createElement('div');
                 row.className = 'cart-item-row';
                 row.innerHTML = `
                     <div class="cart-row-top">
-                        <div>
-                            <div class="cart-item-name">${it.name}</div>
-                            ${it.special_instructions ? `<div class="cart-item-instructions">↳ ${it.special_instructions}</div>` : ''}
+                        <div style="display: flex; align-items: flex-start; gap: 6px;">
+                            <span class="cart-order-badge" title="Chronological Order #${ordNum}">#${ordNum}</span>
+                            <div>
+                                <div class="cart-item-name">${it.name}</div>
+                                ${it.special_instructions ? `<div class="cart-item-instructions">↳ ${it.special_instructions}</div>` : ''}
+                            </div>
                         </div>
                         <span class="cart-item-subtotal">₱${it.line_total.toFixed(2)}</span>
                     </div>
@@ -4754,12 +4962,14 @@
                             <button class="btn-qty-adj" onclick="updateItemQuantity('${it.name}', ${it.quantity - 1})">-</button>
                             <span class="cart-qty-num">${it.quantity}</span>
                             <button class="btn-qty-adj" onclick="updateItemQuantity('${it.name}', ${it.quantity + 1})">+</button>
-                            <button class="btn-cart-remove" title="Remove Item" onclick="removeItemFromCart('${it.name}')">×</button>
+                            <button class="btn-cart-remove" title="Remove Order #${ordNum} (${it.name})" onclick="removeOrderByOrdinal(${ordNum})">×</button>
                         </div>
                     </div>
                 `;
                 container.appendChild(row);
             });
+
+            applyDiscountToCartUI(cart);
         }
 
         async function updateItemQuantity(itemName, newQty) {
@@ -4832,6 +5042,20 @@
             document.getElementById('recTime').innerText = new Date().toLocaleString();
             document.getElementById('recSubtotal').innerText = `₱${receipt.subtotal.toFixed(2)}`;
             document.getElementById('recVat').innerText = `₱${receipt.vat_included.toFixed(2)}`;
+
+            const recDiscRow = document.getElementById('recDiscountRow');
+            const recDiscLabel = document.getElementById('recDiscountLabel');
+            const recDiscVal = document.getElementById('recDiscountVal');
+            if (recDiscRow && recDiscLabel && recDiscVal) {
+                if (receipt.discount_amount && receipt.discount_amount > 0) {
+                    recDiscRow.style.display = 'flex';
+                    recDiscLabel.innerText = receipt.discount_type || '20% Discount:';
+                    recDiscVal.innerText = `-₱${receipt.discount_amount.toFixed(2)}`;
+                } else {
+                    recDiscRow.style.display = 'none';
+                }
+            }
+
             document.getElementById('recTotal').innerText = `₱${receipt.grand_total.toFixed(2)}`;
 
             // Payment verification badge
@@ -5472,11 +5696,10 @@
         let activePayTab = 'gcash';
 
         function openPaymentModal() {
-            const subtotalText = document.getElementById('tabGrandTotal').innerText;
-            document.getElementById('payModalTotal').innerText = subtotalText;
             document.getElementById('payModalTable').innerText = `Table #${currentTableNo}`;
             document.getElementById('mockGcashRef').innerText = `GC-${Math.floor(100000 + Math.random() * 900000)}`;
             switchPayTab('gcash');
+            updatePaymentModalTotals();
             document.getElementById('paymentModal').classList.add('show');
         }
 
@@ -5523,6 +5746,7 @@
                         payment_method: method,
                         payment_ref: ref,
                         student_id: studentId,
+                        discount_type: activeDiscountType,
                         table_no: currentTableNo
                     })
                 });

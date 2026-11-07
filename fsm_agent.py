@@ -267,7 +267,11 @@ DISH_CATALOG = [
         "category": "Burgers",
         "price": 150.0,
         "allergens": ["Dairy", "Gluten"],
-        "aliases": ["perpetual classic burger", "classic burger", "perpetual burger", "classic beef burger", "burger"],
+        "aliases": [
+            "perpetual classic burger", "classic burger", "perpetual burger",
+            "perpetual cheeseburger", "perpetual cheese burger", "classic cheeseburger",
+            "cheeseburger", "cheese burger", "classic beef burger", "beef burger", "burger"
+        ],
     },
     {
         "name": "Bacon Mushroom Melt Burger",
@@ -351,7 +355,7 @@ DISH_CATALOG = [
         "category": "Beverages",
         "price": 60.0,
         "allergens": [],
-        "aliases": ["classic brewed coffee", "brewed coffee", "hot coffee", "coffee"],
+        "aliases": ["classic brewed coffee", "brewed coffee", "hot coffee", "black coffee", "classic coffee", "coffee"],
     },
     {
         "name": "Fresh Calamansi Iced Tea",
@@ -520,6 +524,62 @@ def has_replace_intent(text: str) -> bool:
         "palitan", "palit", "ipalit", "kapalit"
     ]
     return any(re.search(r'\b' + re.escape(w) + r'\b', text_lower) for w in replace_words)
+
+
+
+def extract_ordinal_order(text: str) -> Optional[int]:
+    """
+    Detects 1-based chronological order numbers (e.g. 'first order' -> 1, '2nd order' -> 2, 'last order' -> -1).
+    """
+    text_lower = text.lower().strip()
+    ordinal_map = {
+        # 1st
+        "first": 1, "1st": 1, "una": 1, "unang": 1, "pang-una": 1, "pangunang": 1,
+        # 2nd
+        "second": 2, "2nd": 2, "pangalawa": 2, "pangalawang": 2, "ikalawa": 2, "ikalawang": 2,
+        # 3rd
+        "third": 3, "3rd": 3, "pangatlo": 3, "pangatlong": 3, "ikatlo": 3, "ikatlong": 3,
+        # 4th
+        "fourth": 4, "4th": 4, "pang-apat": 4, "pang-apat na": 4, "ika-apat": 4, "ikaapat": 4,
+        # 5th
+        "fifth": 5, "5th": 5, "panlima": 5, "panlimang": 5, "ika-lima": 5, "ikalima": 5,
+        # 6th
+        "sixth": 6, "6th": 6, "pang-anim": 6, "pang-anim na": 6, "ika-anim": 6, "ikaanim": 6,
+        # 7th
+        "seventh": 7, "7th": 7, "pampito": 7, "pampitong": 7, "ika-pito": 7, "ikapito": 7,
+        # 8th
+        "eighth": 8, "8th": 8, "pangwalo": 8, "pangwalong": 8, "ika-walo": 8, "ikawalo": 8,
+        # 9th
+        "ninth": 9, "9th": 9, "pangsiyam": 9, "pangsiyam na": 9, "ika-siyam": 9, "ikasiyam": 9,
+        # 10th
+        "tenth": 10, "10th": 10, "pansampu": 10, "pansampung": 10, "ika-sampu": 10, "ikasampu": 10,
+        # Last
+        "last": -1, "huli": -1, "huling": -1, "pinakahuli": -1, "pinakahuling": -1,
+    }
+    # Direct search with order/item noun
+    for word, val in ordinal_map.items():
+        pattern = r'\b' + re.escape(word) + r'\b\s*(?:na\s+)?(?:order|item|dish|pagkain|inorder)?'
+        if re.search(pattern, text_lower):
+            return val
+
+    # Order # number
+    m_num = re.search(r'\border\s*(?:#|no\.?|number\s*)?\s*(\d+)\b', text_lower)
+    if m_num:
+        return int(m_num.group(1))
+
+    return None
+
+
+def extract_discount_type(text: str) -> str:
+    """Extracts statutory discount classification (student, senior, pwd, or regular)."""
+    text_lower = text.lower().strip()
+    if any(w in text_lower for w in ["student", "estudyante", "school id", "student id", "student discount"]):
+        return "student"
+    if any(w in text_lower for w in ["senior", "senior citizen", "matanda", "elderly", "senior discount", "sc discount"]):
+        return "senior"
+    if any(w in text_lower for w in ["pwd", "disability", "disabled", "may kapansanan", "pwd discount"]):
+        return "pwd"
+    return "regular"
 
 
 def extract_explicit_qty(text: str) -> Optional[int]:
@@ -790,6 +850,12 @@ class BistroFSMAgent:
             self.transition_state(STATE_TAKING_ORDER, reason=f"Replaced {old_item} with {new_item}")
             return res
 
+        elif tool_name == "remove_order_by_ordinal":
+            ordinal = int(args.get("ordinal", 1))
+            res = db_tools.remove_order_by_ordinal(self.session_id, ordinal, db_path=self.db_path)
+            self.transition_state(STATE_TAKING_ORDER, reason=f"Removed order #{ordinal}")
+            return res
+
         elif tool_name == "update_item_quantity":
             item = args.get("item_name", "")
             qty = int(args.get("qty", 1))
@@ -809,7 +875,8 @@ class BistroFSMAgent:
 
         elif tool_name == "confirm_order_and_deduct_stock":
             db_tools.create_or_get_session(self.table_no, self.session_id, db_path=self.db_path)
-            res = db_tools.confirm_order_and_deduct_stock(self.session_id, db_path=self.db_path)
+            discount_type = args.get("discount_type", "regular")
+            res = db_tools.confirm_order_and_deduct_stock(self.session_id, discount_type=discount_type, db_path=self.db_path)
             if res.get("status") == "success":
                 self.transition_state(STATE_CONFIRMED, reason="Order committed and inventory deducted")
             return res
@@ -874,6 +941,32 @@ class BistroFSMAgent:
             is_filipino = True
         else:
             is_filipino = (self.language == "filipino")
+
+        # -------------------------------------------------------------
+        # 0. Intent: Remove Order by Chronological Ordinal (e.g. 'remove first order', 'cancel 2nd order', 'tanggalin ang unang order', 'remove last order')
+        # -------------------------------------------------------------
+        ord_val = extract_ordinal_order(user_input)
+        is_rem_phrase = any(w in text_lower for w in ["remove", "cancel", "delete", "tanggalin", "alisin", "bawasan", "burahin", "drop", "discard"])
+        if ord_val is not None and is_rem_phrase:
+            if "remove_order_by_ordinal" not in tools_executed:
+                res = self.execute_tool("remove_order_by_ordinal", {"ordinal": ord_val})
+                turn_tool_calls.append({
+                    "tool": "remove_order_by_ordinal",
+                    "arguments": {"ordinal": ord_val},
+                    "result": res
+                })
+                tools_executed.add("remove_order_by_ordinal")
+                if res.get("status") == "success":
+                    ord_name = "last" if ord_val == -1 else f"#{ord_val}"
+                    if is_filipino:
+                        extra_messages.append(f"Tinanggal ko na po ang {ord_name} na order ({res.get('removed_qty', 1)}x {res.get('removed_item')}) mula sa inyong tab. Kabuuang bayarin: ₱{res.get('new_order_total', 0.0):.2f}.")
+                    else:
+                        extra_messages.append(f"Removed chronological order {ord_name} ({res.get('removed_qty', 1)}x {res.get('removed_item')}) from your order tab. Your updated total is ₱{res.get('new_order_total', 0.0):.2f}.")
+                elif res.get("status") == "empty_cart":
+                    extra_messages.append("Your order tab is currently empty. There are no orders to remove.")
+                elif res.get("status") == "invalid_ordinal":
+                    extra_messages.append(res.get("message", "That order sequence number does not exist on your tab."))
+                is_override = True
 
         # -------------------------------------------------------------
         # 1. Intent: Replace Order (HIGHEST PRIORITY for order modifications)
@@ -971,13 +1064,16 @@ class BistroFSMAgent:
             "bayaran", "i-confirm", "kumpirmahin", "pakiconfirm", "order na po", "complete order"
         ]):
             if "confirm_order_and_deduct_stock" not in tools_executed:
-                res = self.execute_tool("confirm_order_and_deduct_stock", {})
-                turn_tool_calls.append({"tool": "confirm_order_and_deduct_stock", "arguments": {}, "result": res})
+                detected_discount = extract_discount_type(user_input)
+                res = self.execute_tool("confirm_order_and_deduct_stock", {"discount_type": detected_discount})
+                turn_tool_calls.append({"tool": "confirm_order_and_deduct_stock", "arguments": {"discount_type": detected_discount}, "result": res})
                 tools_executed.add("confirm_order_and_deduct_stock")
                 if res.get("status") == "success":
+                    disc_amt = res.get("discount_amount", 0.0)
+                    disc_note = f" (Applied 20% {res.get('discount_type')}: -₱{disc_amt:.2f})" if disc_amt > 0 else " (Regular total as is)"
                     extra_messages.append(
                         f"Receipt #{res.get('receipt_id')} generated for Table #{res.get('table_no')}. "
-                        f"Order routed to kitchen display! Grand Total: ₱{res.get('grand_total'):.2f}."
+                        f"Order routed to kitchen display!{disc_note} Grand Total: ₱{res.get('grand_total'):.2f}."
                     )
                 elif res.get("message") == "Cannot confirm empty order.":
                     extra_messages.append("Your order tab is currently empty. Please select items from our menu first.")
@@ -1172,6 +1268,32 @@ class BistroFSMAgent:
         has_order_verb = any(re.search(v, text_lower) for v in [r'\border\b', r'\bi want to order\b', r'\bpabili\b', r'\badd\b', r"\bi'll have\b", r'\bi will take\b'])
         is_allergen_query = (any(w in text_lower for w in explicit_allergen_words) or (is_question and has_allergen_mention)) and not (has_order_verb and not is_question)
         is_avail_query = any(w in text_lower for w in ["available", "out of stock", "in stock", "sold out", "meron pa ba", "mayroon pa bang", "ubos na"])
+
+        # -------------------------------------------------------------
+        # 0. Intent: Remove Order by Chronological Ordinal (e.g. 'remove first order', 'cancel 2nd order', 'tanggalin ang unang order', 'remove last order')
+        # -------------------------------------------------------------
+        ord_val = extract_ordinal_order(user_input)
+        is_rem_phrase = any(w in text_lower for w in ["remove", "cancel", "delete", "tanggalin", "alisin", "bawasan", "burahin", "drop", "discard"])
+        if ord_val is not None and is_rem_phrase:
+            if "remove_order_by_ordinal" not in tools_executed:
+                res = self.execute_tool("remove_order_by_ordinal", {"ordinal": ord_val})
+                turn_tool_calls.append({
+                    "tool": "remove_order_by_ordinal",
+                    "arguments": {"ordinal": ord_val},
+                    "result": res
+                })
+                tools_executed.add("remove_order_by_ordinal")
+                if res.get("status") == "success":
+                    ord_name = "last" if ord_val == -1 else f"#{ord_val}"
+                    if is_filipino:
+                        extra_messages.append(f"Tinanggal ko na po ang {ord_name} na order ({res.get('removed_qty', 1)}x {res.get('removed_item')}) mula sa inyong tab. Kabuuang bayarin: ₱{res.get('new_order_total', 0.0):.2f}.")
+                    else:
+                        extra_messages.append(f"Removed chronological order {ord_name} ({res.get('removed_qty', 1)}x {res.get('removed_item')}) from your order tab. Your updated total is ₱{res.get('new_order_total', 0.0):.2f}.")
+                elif res.get("status") == "empty_cart":
+                    extra_messages.append("Your order tab is currently empty. There are no orders to remove.")
+                elif res.get("status") == "invalid_ordinal":
+                    extra_messages.append(res.get("message", "That order sequence number does not exist on your tab."))
+                is_override = True
 
         # -------------------------------------------------------------
         # 1. Intent: Replace Order (HIGHEST PRIORITY for order modifications)
@@ -1678,12 +1800,16 @@ class BistroFSMAgent:
                     t_name = tc["tool"]
                     t_res = tc["result"]
                     if t_name == "confirm_order_and_deduct_stock" and t_res.get("status") == "success":
+                        disc_amt = t_res.get("discount_amount", 0.0)
+                        disc_str = f" | **{t_res.get('discount_type')}:** -₱{disc_amt:.2f}" if disc_amt > 0 else " | **Discount:** Regular (None)"
                         synthesis_parts.append(
                             f"🎉 **Order Confirmed!** (Receipt #{t_res.get('receipt_id')})\n"
                             f"Your order for Table #{t_res.get('table_no')} has been sent to the kitchen!\n"
-                            f"**Subtotal:** ₱{t_res.get('subtotal'):.2f} | **Total:** ₱{t_res.get('grand_total'):.2f}\n"
+                            f"**Subtotal:** ₱{t_res.get('subtotal'):.2f}{disc_str} | **Final Total:** ₱{t_res.get('grand_total'):.2f}\n"
                             f"Thank you for dining with Perpetual Bistro! Your food will be served shortly."
                         )
+                    elif t_name == "remove_order_by_ordinal":
+                        synthesis_parts.append(t_res.get("message", "Order item removed."))
                     elif t_name == "view_current_order" and t_res.get("status") == "success":
                         items_desc = "\n".join([f"- {it['quantity']}x {it['name']} (₱{it['line_total']:.2f})" for it in t_res.get("line_items", [])])
                         synthesis_parts.append(

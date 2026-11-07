@@ -105,10 +105,19 @@ class KdsStatusRequest(BaseModel):
     status: str
 
 
+
+class CartRemoveOrdinalRequest(BaseModel):
+    ordinal: int
+
+
+class ConfirmOrderRequest(BaseModel):
+    discount_type: Optional[str] = "regular"
+
 class PaymentCheckoutRequest(BaseModel):
     payment_method: str  # GCASH, STUDENT_CARD, CASH
     payment_ref: Optional[str] = ""
     student_id: Optional[str] = ""
+    discount_type: Optional[str] = "regular"
     table_no: Optional[int] = None
 
 
@@ -280,6 +289,16 @@ def replace_cart_item(req: CartReplaceRequest):
     return {"result": res, "cart": cart, "fsm_state": active_agent.state}
 
 
+
+@app.post("/api/cart/remove-ordinal")
+def remove_cart_ordinal(req: CartRemoveOrdinalRequest):
+    """Removes a line item by its chronological order sequence (1 = 1st order, -1 = last)."""
+    global active_agent
+    res = active_agent.execute_tool("remove_order_by_ordinal", {"ordinal": req.ordinal})
+    cart = db_tools.view_current_order(active_agent.session_id)
+    return {"result": res, "cart": cart, "fsm_state": active_agent.state}
+
+
 @app.post("/api/cart/clear")
 def clear_cart_endpoint():
     """Clears all line items from the active table order cart."""
@@ -311,11 +330,12 @@ def switch_table_endpoint(req: TableSwitchRequest):
 
 
 @app.post("/api/confirm")
-def confirm_order():
-    """Triggers FSM transition from REVIEW to CONFIRMED and deducts stock."""
+def confirm_order(req: Optional[ConfirmOrderRequest] = None):
+    """Triggers FSM transition from REVIEW to CONFIRMED, applying 20% student/senior/pwd discount if selected."""
     global active_agent
+    disc = (req.discount_type if req else "regular") or "regular"
     db_tools.create_or_get_session(active_agent.table_no, active_agent.session_id)
-    res = active_agent.execute_tool("confirm_order_and_deduct_stock", {})
+    res = active_agent.execute_tool("confirm_order_and_deduct_stock", {"discount_type": disc})
     cart = db_tools.view_current_order(active_agent.session_id)
     return {"receipt": res, "cart": cart, "fsm_state": active_agent.state}
 
@@ -344,8 +364,9 @@ def process_payment_and_checkout(req: PaymentCheckoutRequest):
 
     db_tools.create_or_get_session(active_agent.table_no, active_agent.session_id)
 
-    # 1. Deduct stock & confirm FSM
-    res = active_agent.execute_tool("confirm_order_and_deduct_stock", {})
+    # 1. Deduct stock & confirm FSM with discount
+    disc = req.discount_type or ("student" if (req.payment_method.upper() == "STUDENT_CARD" or req.student_id) else "regular")
+    res = active_agent.execute_tool("confirm_order_and_deduct_stock", {"discount_type": disc})
     if res.get("status") != "success":
         return {"status": "error", "message": res.get("message", "Payment processing aborted.")}
 
