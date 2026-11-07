@@ -6213,11 +6213,9 @@
                 };
 
                 floaterSpeechRec.onend = () => {
-                    if (isFloaterListening) {
-                        stopFloaterMic(true);
-                    } else {
-                        updateFloaterMicUI(false);
-                    }
+                    isFloaterListening = false;
+                    updateFloaterMicUI(false);
+                    clearTimeout(floaterSilenceTimer);
                 };
 
                 floaterSpeechRec.start();
@@ -6275,6 +6273,9 @@
         }
 
         async function executeFloaterVoiceOrder(spokenText) {
+            if (isVoiceSubmitting) return;
+            isVoiceSubmitting = true;
+
             openFloaterDrawer();
             appendFloaterDialogue('customer', spokenText);
 

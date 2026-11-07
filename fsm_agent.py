@@ -1269,7 +1269,7 @@ class BistroFSMAgent:
         elif has_ordering_intent(user_input):
             found_dishes = find_dishes_in_text(user_input)
             if found_dishes:
-                added_dish_names = {tc.get("arguments", {}).get("item_name") for tc in turn_tool_calls if tc["tool"] == "add_item_to_order"}
+                added_dish_names = {str(tc.get("arguments", {}).get("item_name", "")).lower().strip() for tc in turn_tool_calls if tc["tool"] == "add_item_to_order"}
                 for dish, qty, instructions in found_dishes:
                     avail = db_tools.check_availability(dish["name"], qty, db_path=self.db_path)
                     if not avail.get("available", False):
@@ -1296,7 +1296,7 @@ class BistroFSMAgent:
                         is_override = True
                         continue
 
-                    if dish["name"] not in added_dish_names:
+                    if dish["name"].lower().strip() not in added_dish_names:
                         clean_inst = sanitize_instructions(instructions, user_input)
                         res = self.execute_tool("add_item_to_order", {
                             "item_name": dish["name"],
@@ -1860,6 +1860,9 @@ class BistroFSMAgent:
 
                 self.messages.append(assistant_msg)
 
+                # Track executed add tools to avoid repeating within same turn
+                already_added_items = {str(tc.get("arguments", {}).get("item_name", "")).lower().strip() for tc in turn_tool_calls if tc["tool"] == "add_item_to_order"}
+
                 for tc in tool_calls:
                     fn_info = tc.get("function", {})
                     fn_name = fn_info.get("name", "")
@@ -1869,6 +1872,18 @@ class BistroFSMAgent:
                             fn_args = json.loads(fn_args)
                         except Exception:
                             fn_args = {}
+
+                    # Prevent duplicate add_item_to_order in same turn
+                    if fn_name == "add_item_to_order":
+                        target_name = str(fn_args.get("item_name", "")).lower().strip()
+                        if target_name in already_added_items:
+                            continue
+                        # Prevent model from adding dishes the user never ordered
+                        dishes_in_input = find_dishes_in_text(user_input)
+                        valid_dish_names = {d[0]["name"].lower().strip() for d in dishes_in_input}
+                        if valid_dish_names and not any(target_name in vd or vd in target_name for vd in valid_dish_names):
+                            continue
+                        already_added_items.add(target_name)
 
                     # Anti-Hallucination Guard: Prevent small models from adding to tab during inquiry/dietary queries
                     text_lower_chk = user_input.lower().strip()
@@ -1909,6 +1924,10 @@ class BistroFSMAgent:
                         "content": json.dumps(tool_result, ensure_ascii=False)
                     }
                     self.messages.append(tool_msg)
+
+                # If tools were executed, break to allow deterministic response synthesis and prevent model re-call loops
+                if turn_tool_calls:
+                    break
 
             # Safety guard: ensure critical orders/checkouts/allergens execute
             extra_tool_note, should_override = self._ensure_critical_tool_execution(user_input, turn_tool_calls)
